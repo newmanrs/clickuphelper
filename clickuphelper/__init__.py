@@ -65,7 +65,7 @@ class ClickupTask:  # Technically Clickup Task View
         """
         return self.custom_fields.keys()
 
-    def get_field(self, name):
+    def get_field_obj(self,name):
 
         try:
             field = self.custom_fields[name]
@@ -75,6 +75,15 @@ class ClickupTask:  # Technically Clickup Task View
                 f" Available fields are {list(self.get_field_names())}"
             )
             raise ValueError(msg) from e
+        return field
+
+    def get_field_id(self, name):
+
+        return self.get_field_obj(name)['id']
+
+    def get_field(self, name):
+
+        field = self.get_field_obj(name)
 
         def print_field():
             print(f"Looking up custom field:  {name}")
@@ -143,6 +152,9 @@ class ClickupTask:  # Technically Clickup Task View
         with open(filename, "w") as f:
             json.dump(f, self.task, indent=indent)
 
+    """ TODO: post operations mutate task, we should reinitialize after or move these commands outside 
+    of this object to ensure consistent state """
+
     def post_comment(self, comment, notify_all = False):
 
         url = f"https://api.clickup.com/api/v2/task/{self.id}/comment"
@@ -167,24 +179,102 @@ class ClickupTask:  # Technically Clickup Task View
 
         return data
 
+    def post_custom_field(self, field, value):
+
+        fid = self.get_field_id(field)
+        task_id = "YOUR_task_id_PARAMETER"
+        field_id = "YOUR_field_id_PARAMETER"
+        url = f"https://api.clickup.com/api/v2/task/{self.id}/field/{fid}"
+
+        payload = {
+            "value": value
+        }
+
+        query={}
+
+        response = requests.post(url, json=payload, headers=self.headers, params=query)
+        data = response.json()
+        return data
+
+class ClickupWorkspace():
+    
+    """
+    This might just be useless - it's the default view on a workspace.
+    """
+
+    cu_key = os.environ["CLICKUP_API_KEY"]
+    headers = {"Authorization": cu_key}
+
+    def __init__(self):
+        team_id = "6914877"
+        url = "https://api.clickup.com/api/v2/team/" + team_id + "/view"
+        response = requests.get(url, headers=self.headers)
+
+        self.data = response.json()
+        print(json.dumps(self.data,indent=2))
+
+
+# Get spaces
+
+class ClickupSpaces():
+
+    cu_key = os.environ["CLICKUP_API_KEY"]
+    headers = {"Authorization": cu_key}
+
+    def __init__(self):
+        """
+        Find all the Clickup Spaces within a given team.  For now read-only, but the API
+        also supports creation/put/delete for the needlessly bold
+        """
+
+        team_id = "6914877"
+
+        url = "https://api.clickup.com/api/v2/team/" + team_id + "/space"
+
+        query = {
+            "archived": "false"
+        }
+
+        response = requests.get(url, headers=self.headers, params=query)
+
+        self.spaces = response.json()
+
+        # what do I even want here
+        self.space_names = [i['name'] for i in self.spaces['spaces']]
+        self.space_id = [i['id'] for i in self.spaces['spaces']]
+        self.space_lookup = {k:v for (k,v) in zip(self.space_names, self.space_id)}
+
+    def get_names(self):
+        return self.space_names
+
+    def get_id(self, name):
+
+        try:
+            return self.space_lookup[name]
+        except KeyError as e:
+            msg = (f"Space names in workspace are {self.space_names}")
+            raise KeyError(msg) from e
+
+
+
+#class ClickupFolder()
+
+
+# TODO: Classes for Lists, Spaces, and whatever other Clickup Object Hierarchy is
 """
-task_id = "YOUR_task_id_PARAMETER"
-url = "https://api.clickup.com/api/v2/task/" + task_id + "/comment"
+class ClickupLists():
 
-query = {
-  "custom_task_ids": "true",
-  "team_id": "123"
-}
+    folder_id = "YOUR_folder_id_PARAMETER"
+    url = "https://api.clickup.com/api/v2/folder/" + folder_id + "/list"
 
+    query = {
+    "archived": "false"
+    }
 
+    headers = {"Authorization": "YOUR_API_KEY_HERE"}
 
-headers = {
-  "Content-Type": "application/json",
-  "Authorization": "YOUR_API_KEY_HERE"
-}
+    response = requests.get(url, headers=headers, params=query)
 
-response = requests.post(url, json=payload, headers=headers, params=query)
-
-data = response.json()
-print(data)
+    data = response.json()
+    print(data)
 """
