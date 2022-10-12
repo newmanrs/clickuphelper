@@ -6,6 +6,11 @@ import os
 from collections import defaultdict
 
 
+cu_key = os.environ["CLICKUP_API_KEY"]
+team_id = os.environ["CLICKUP_TEAM_ID"]
+headers = {"Authorization": cu_key}
+
+
 def ts_ms_to_dt(ts, except_if_year_1970=True):
     if isinstance(ts, str):
         ts = float(ts)
@@ -24,11 +29,7 @@ def ts_ms_to_dt(ts, except_if_year_1970=True):
     return dt
 
 
-class ClickupTask:  # Technically Clickup Task View
-
-    cu_key = os.environ["CLICKUP_API_KEY"]
-    headers = {"Authorization": cu_key}
-
+class Task:  # Technically Clickup Task View
     def __init__(self, task_id, verbose=True):
         """
         Initialize container class for working with a clickup task
@@ -41,7 +42,7 @@ class ClickupTask:  # Technically Clickup Task View
         self.id = task_id
 
         url = f"https://api.clickup.com/api/v2/task/{task_id}"
-        q = requests.get(url, headers=self.headers)
+        q = requests.get(url, headers=headers)
         task = q.json()
 
         # Store full task object
@@ -65,7 +66,7 @@ class ClickupTask:  # Technically Clickup Task View
         """
         return self.custom_fields.keys()
 
-    def get_field_obj(self,name):
+    def get_field_obj(self, name):
 
         try:
             field = self.custom_fields[name]
@@ -79,7 +80,7 @@ class ClickupTask:  # Technically Clickup Task View
 
     def get_field_id(self, name):
 
-        return self.get_field_obj(name)['id']
+        return self.get_field_obj(name)["id"]
 
     def get_field(self, name):
 
@@ -155,14 +156,14 @@ class ClickupTask:  # Technically Clickup Task View
     """ TODO: post operations mutate task, we should reinitialize after or move these commands outside 
     of this object to ensure consistent state """
 
-    def post_comment(self, comment, notify_all = False):
+    def post_comment(self, comment, notify_all=False):
 
         url = f"https://api.clickup.com/api/v2/task/{self.id}/comment"
 
         payload = {
             "comment_text": f"{comment}",
             "assignee": None,
-            "notify_all": notify_all
+            "notify_all": notify_all,
         }
 
         # Custom task ids require team id too
@@ -173,7 +174,7 @@ class ClickupTask:  # Technically Clickup Task View
         # }
         query = {}
 
-        response = requests.post(url, json=payload, headers=self.headers, params=query)
+        response = requests.post(url, json=payload, headers=headers, params=query)
 
         data = response.json()
 
@@ -186,63 +187,48 @@ class ClickupTask:  # Technically Clickup Task View
         field_id = "YOUR_field_id_PARAMETER"
         url = f"https://api.clickup.com/api/v2/task/{self.id}/field/{fid}"
 
-        payload = {
-            "value": value
-        }
+        payload = {"value": value}
 
-        query={}
+        query = {}
 
-        response = requests.post(url, json=payload, headers=self.headers, params=query)
+        response = requests.post(url, json=payload, headers=headers, params=query)
         data = response.json()
         return data
 
-class ClickupWorkspace():
-    
+
+class Workspace:
+
     """
     This might just be useless - it's the default view on a workspace.
     """
 
-    cu_key = os.environ["CLICKUP_API_KEY"]
-    headers = {"Authorization": cu_key}
-
     def __init__(self):
-        team_id = "6914877"
         url = "https://api.clickup.com/api/v2/team/" + team_id + "/view"
-        response = requests.get(url, headers=self.headers)
+        response = requests.get(url, headers=headers)
 
         self.data = response.json()
-        print(json.dumps(self.data,indent=2))
+        print(json.dumps(self.data, indent=2))
 
 
-# Get spaces
-
-class ClickupSpaces():
-
-    cu_key = os.environ["CLICKUP_API_KEY"]
-    headers = {"Authorization": cu_key}
-
+class Spaces:
     def __init__(self):
         """
         Find all the Clickup Spaces within a given team.  For now read-only, but the API
         also supports creation/put/delete for the needlessly bold
         """
 
-        team_id = "6914877"
-
         url = "https://api.clickup.com/api/v2/team/" + team_id + "/space"
 
-        query = {
-            "archived": "false"
-        }
+        query = {"archived": "false"}
 
-        response = requests.get(url, headers=self.headers, params=query)
+        response = requests.get(url, headers=headers, params=query)
 
-        self.spaces = response.json()
+        self.spaces = response.json()["spaces"]
 
         # what do I even want here
-        self.space_names = [i['name'] for i in self.spaces['spaces']]
-        self.space_id = [i['id'] for i in self.spaces['spaces']]
-        self.space_lookup = {k:v for (k,v) in zip(self.space_names, self.space_id)}
+        self.space_names = [i["name"] for i in self.spaces]
+        self.space_ids = [i["id"] for i in self.spaces]
+        self.space_lookup = {k: v for (k, v) in zip(self.space_names, self.space_ids)}
 
     def get_names(self):
         return self.space_names
@@ -252,17 +238,127 @@ class ClickupSpaces():
         try:
             return self.space_lookup[name]
         except KeyError as e:
-            msg = (f"Space names in workspace are {self.space_names}")
+            msg = f"Space names in workspace are {self.space_names}"
             raise KeyError(msg) from e
 
+    def __iter__(self):
+        return iter(self.spaces)
 
 
-#class ClickupFolder()
+class Folders:
+    def __init__(self, space_id):
+
+        # space_id = "54784007"
+        url = "https://api.clickup.com/api/v2/space/" + space_id + "/folder"
+
+        query = {"archived": "false"}
+        query = {}
+
+        response = requests.get(url, headers=headers, params=query)
+
+        data = response.json()
+        self.folders = data["folders"]
+
+        self.folder_names = [i["name"] for i in self.folders]
+        self.folder_ids = [i["id"] for i in self.folders]
+        self.folder_lookup = {
+            k: v for (k, v) in zip(self.folder_names, self.folder_ids)
+        }
+
+    def get_names(self):
+        return self.folder_names
+
+    def get_id(self, name):
+
+        try:
+            return self.folder_lookup[name]
+        except KeyError as e:
+            msg = f"Folder names are {self.folder_names}"
+            raise KeyError(msg) from e
+
+    def __iter__(self):
+        return iter(self.folders)
+
+
+class Lists:
+    def __init__(self, folder_id):
+
+        url = "https://api.clickup.com/api/v2/folder/" + folder_id + "/list"
+
+        query = {"archived": "false"}
+
+        response = requests.get(url, headers=headers, params=query)
+
+        data = response.json()
+        self.lists = data["lists"]
+
+        self.list_names = [i["name"] for i in self.lists]
+        self.list_ids = [i["id"] for i in self.lists]
+        self.list_lookup = {k: v for (k, v) in zip(self.list_names, self.list_ids)}
+
+    def get_names(self):
+        return self.list_names
+
+    def get_id(self, name):
+
+        try:
+            return self.list_lookup[name]
+        except KeyError as e:
+            msg = f"List names are {self.list_names}"
+            raise KeyError(msg) from e
+
+    def __iter__(self):
+        return iter(self.lists)
+
+
+class Tasks:
+    def __init__(self, list_id):
+
+        url = "https://api.clickup.com/api/v2/list/" + list_id + "/task"
+
+        query = {"archived": "false"}
+        query = {}
+
+        response = requests.get(url, headers=headers, params=query)
+
+        data = response.json()
+        self.tasks = data["tasks"]
+
+        self.task_names = [i["name"] for i in self.tasks]
+        self.task_ids = [i["id"] for i in self.tasks]
+        self.task_lookup = {k: v for (k, v) in zip(self.task_names, self.task_ids)}
+
+    def get_names(self):
+        return self.task_names
+
+    def get_id(self, name):
+
+        try:
+            return self.task_lookup[name]
+        except KeyError as e:
+            msg = f"Task names are {self.task_names}"
+            raise KeyError(msg) from e
+
+    def __iter__(self):
+        return iter(self.tasks)
+
+
+def display_tree(display_tasks=True):
+    spaces = Spaces()
+    for space in spaces:
+        print(f"space: {space['name']}, id: {space['id']}")
+        for folder in Folders(space["id"]):
+            print(f"  folder id: {folder['id']}, name: {folder['name']}")
+            for li in Lists(folder["id"]):
+                print(f"   list id: {li['id']}, name: {li['name']}")
+                if display_tasks:
+                    for task in Tasks(li["id"]):
+                        print(f"      task id: {task['id']}, name: {task['name']}")
 
 
 # TODO: Classes for Lists, Spaces, and whatever other Clickup Object Hierarchy is
 """
-class ClickupLists():
+class Lists():
 
     folder_id = "YOUR_folder_id_PARAMETER"
     url = "https://api.clickup.com/api/v2/folder/" + folder_id + "/list"

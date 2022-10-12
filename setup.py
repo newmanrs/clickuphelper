@@ -8,7 +8,8 @@ setup(
     install_requires=["requests", "click"],
     entry_points={
         "console_scripts": [
-            "clickuphelper=clickuphelper.cli:cli",
+            "clickuptask=clickuphelper.cli:task",
+            "clickuptree=clickuphelper.cli:tree",
         ],
     },
 )
