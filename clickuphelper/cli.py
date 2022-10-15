@@ -18,7 +18,7 @@ def task(ctx, task_id):
     ctx.obj = task
 
     if ctx.invoked_subcommand is None:
-        json.dumps(task.task, indent=2)
+        click.echo(json.dumps(task.task, indent=2))
 
 
 @task.command
@@ -78,10 +78,8 @@ def post_field(ctx, name, value):
     click.echo(ctx.obj.post_custom_field(name, value))
 
 
-
-
-#@click.group(invoke_without_command=True)
+# @click.group(invoke_without_command=True)
 @click.command()
-@click.option("--display-tasks",'-t', is_flag=True)
+@click.option("--display-tasks", "-t", is_flag=True)
 def tree(display_tasks):
     clickuphelper.display_tree(display_tasks)

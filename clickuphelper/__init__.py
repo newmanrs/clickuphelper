@@ -211,6 +211,7 @@ class Workspace:
 
 
 class Spaces:
+
     def __init__(self):
         """
         Find all the Clickup Spaces within a given team.  For now read-only, but the API
@@ -246,6 +247,7 @@ class Spaces:
 
 
 class Folders:
+
     def __init__(self, space_id):
 
         # space_id = "54784007"
@@ -281,6 +283,7 @@ class Folders:
 
 
 class Lists:
+
     def __init__(self, folder_id):
 
         url = "https://api.clickup.com/api/v2/folder/" + folder_id + "/list"
@@ -346,31 +349,23 @@ class Tasks:
 def display_tree(display_tasks=True):
     spaces = Spaces()
     for space in spaces:
-        print(f"space: {space['name']}, id: {space['id']}")
+        print(f"space id: {space['id']}, name: {space['name']}")
         for folder in Folders(space["id"]):
             print(f"  folder id: {folder['id']}, name: {folder['name']}")
             for li in Lists(folder["id"]):
-                print(f"   list id: {li['id']}, name: {li['name']}")
+                print(f"    list id: {li['id']}, name: {li['name']}")
                 if display_tasks:
                     for task in Tasks(li["id"]):
                         print(f"      task id: {task['id']}, name: {task['name']}")
 
+# DisplayTree above kind of begs for generalizing with some type of iterator
+# that takes in a Space, Folder, List.  Or at least list-tasks, but others
+# would be nice too.  That said, given an ID, we don't really know if its a
+# space, folder,  list, or task, but we can probably just abuse all four endpoints.
 
-# TODO: Classes for Lists, Spaces, and whatever other Clickup Object Hierarchy is
-"""
-class Lists():
+def get_task_templates():
+    raise NotImplementedError()
 
-    folder_id = "YOUR_folder_id_PARAMETER"
-    url = "https://api.clickup.com/api/v2/folder/" + folder_id + "/list"
+def make_task_from_template(list_id, task_id):
+    raise NotImplementedError
 
-    query = {
-    "archived": "false"
-    }
-
-    headers = {"Authorization": "YOUR_API_KEY_HERE"}
-
-    response = requests.get(url, headers=headers, params=query)
-
-    data = response.json()
-    print(data)
-"""
