@@ -30,19 +30,29 @@ def ts_ms_to_dt(ts, except_if_year_1970=True):
 
 
 class Task:  # Technically Clickup Task View
-    def __init__(self, task_id, verbose=True):
+    def __init__(self, task_id, verbose=True, include_subtasks=True):
         """
         Initialize container class for working with a clickup task
         """
         self.verbose = verbose
+        self.include_subtasks = include_subtasks
         self.reinitialize(task_id)
 
     def reinitialize(self, task_id):
 
         self.id = task_id
 
+        if self.include_subtasks:
+            query = {
+                "custom_task_ids": "true",
+                "team_id": team_id,
+                "include_subtasks": "true",
+            }
+        else:
+            query = {}
+
         url = f"https://api.clickup.com/api/v2/task/{task_id}"
-        q = requests.get(url, headers=headers)
+        q = requests.get(url, headers=headers, params=query)
         task = q.json()
 
         # Store full task object
@@ -153,9 +163,6 @@ class Task:  # Technically Clickup Task View
         with open(filename, "w") as f:
             json.dump(f, self.task, indent=indent)
 
-    """ TODO: post operations mutate task, we should reinitialize after or move these commands outside 
-    of this object to ensure consistent state """
-
     def post_comment(self, comment, notify_all=False):
 
         url = f"https://api.clickup.com/api/v2/task/{self.id}/comment"
@@ -183,8 +190,7 @@ class Task:  # Technically Clickup Task View
     def post_custom_field(self, field, value):
 
         fid = self.get_field_id(field)
-        task_id = "YOUR_task_id_PARAMETER"
-        field_id = "YOUR_field_id_PARAMETER"
+
         url = f"https://api.clickup.com/api/v2/task/{self.id}/field/{fid}"
 
         payload = {"value": value}
@@ -211,7 +217,6 @@ class Workspace:
 
 
 class Spaces:
-
     def __init__(self):
         """
         Find all the Clickup Spaces within a given team.  For now read-only, but the API
@@ -247,10 +252,8 @@ class Spaces:
 
 
 class Folders:
-
     def __init__(self, space_id):
 
-        # space_id = "54784007"
         url = "https://api.clickup.com/api/v2/space/" + space_id + "/folder"
 
         query = {"archived": "false"}
@@ -282,8 +285,38 @@ class Folders:
         return iter(self.folders)
 
 
-class Lists:
+class SpaceLists:
+    def __init__(self, space_id):
 
+        url = "https://api.clickup.com/api/v2/space/" + space_id + "/list"
+
+        query = {"archived": "false"}
+
+        response = requests.get(url, headers=headers, params=query)
+
+        data = response.json()
+        self.lists = data["lists"]
+
+        self.list_names = [i["name"] for i in self.lists]
+        self.list_ids = [i["id"] for i in self.lists]
+        self.list_lookup = {k: v for (k, v) in zip(self.list_names, self.list_ids)}
+
+        def get_names(self):
+            return self.list_names
+
+        def get_id(self, name):
+
+            try:
+                return self.list_lookup[name]
+            except KeyError as e:
+                msg = f"List names are {self.list_names}"
+                raise KeyError(msg) from e
+
+    def __iter__(self):
+        return iter(self.lists)
+
+
+class FolderLists:
     def __init__(self, folder_id):
 
         url = "https://api.clickup.com/api/v2/folder/" + folder_id + "/list"
@@ -346,26 +379,53 @@ class Tasks:
         return iter(self.tasks)
 
 
-def display_tree(display_tasks=True):
+def display_tree(display_tasks=True, display_subtasks=False):
+
+    """
+    Print a tree of clickup objects and names from Space, Folders, Lists.
+    Options to include tasks and subtasks significantly slow output
+    """
+
     spaces = Spaces()
+
+    def _get_and_print_subtasks(task_id, pad=6):
+
+        task = Task(task_id)
+        indent = " " * pad
+
+        if 'subtasks' in task.task:
+            for subtask in task.task['subtasks']:
+                print(f"{indent}task id: {subtask['id']}, name: {subtask['name']}")
+
     for space in spaces:
         print(f"space id: {space['id']}, name: {space['name']}")
         for folder in Folders(space["id"]):
             print(f"  folder id: {folder['id']}, name: {folder['name']}")
-            for li in Lists(folder["id"]):
+            for li in FolderLists(folder["id"]):
                 print(f"    list id: {li['id']}, name: {li['name']}")
                 if display_tasks:
                     for task in Tasks(li["id"]):
                         print(f"      task id: {task['id']}, name: {task['name']}")
+                        if display_subtasks:
+                            _get_and_print_subtasks(task["id"], pad=8)
+        for li in SpaceLists(space["id"]):
+            print(f"  list id: {li['id']}, name: {li['name']}")
+            if display_tasks:
+                for task in Tasks(li["id"]):
+                    print(f"    task id: {task['id']}, name: {task['name']}")
+                    if display_subtasks:
+                        _get_and_print_subtasks(task["id"], pad=6)
+
 
 # DisplayTree above kind of begs for generalizing with some type of iterator
 # that takes in a Space, Folder, List.  Or at least list-tasks, but others
 # would be nice too.  That said, given an ID, we don't really know if its a
 # space, folder,  list, or task, but we can probably just abuse all four endpoints.
 
+
 def get_task_templates():
     raise NotImplementedError()
 
+
 def make_task_from_template(list_id, task_id):
     raise NotImplementedError
-

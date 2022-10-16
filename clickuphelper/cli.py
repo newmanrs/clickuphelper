@@ -80,6 +80,19 @@ def post_field(ctx, name, value):
 
 # @click.group(invoke_without_command=True)
 @click.command()
-@click.option("--display-tasks", "-t", is_flag=True)
-def tree(display_tasks):
-    clickuphelper.display_tree(display_tasks)
+@click.option(
+    "--display",
+    "-d",
+    type=click.Choice(["no-tasks", "tasks", "subtasks"]),
+    default="no-tasks",
+)
+def tree(display):
+
+    if display == "no-tasks":
+        clickuphelper.display_tree(display_tasks=False, display_subtasks=False)
+    elif display == "tasks":
+        clickuphelper.display_tree(display_tasks=True, display_subtasks=False)
+    elif display == "subtasks":
+        clickuphelper.display_tree(display_tasks=True, display_subtasks=True)
+    else:
+        raise NotImplementedError("else statement ought to be unreachable")
