@@ -69,6 +69,25 @@ def post_comment(ctx, comment, notify):
 
 @task.command
 @click.pass_context
+def subtasks(ctx):
+    """
+    Display subtasks of task
+    """
+
+    def _get_and_print_subtasks(task_id, pad=0):
+        indent = " " * pad
+        subtask = clickuphelper.Task(task_id)
+        click.echo(f"{indent}task id: {subtask.id}, name: {subtask.name}")
+
+        if "subtasks" in subtask.task.keys():
+            for subtask in subtask.task["subtasks"]:
+                _get_and_print_subtasks(subtask["id"], pad=pad + 2)
+
+    _get_and_print_subtasks(ctx.obj.id)
+
+
+@task.command
+@click.pass_context
 @click.argument("name")
 @click.argument("value")
 def post_field(ctx, name, value):

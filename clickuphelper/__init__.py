@@ -392,10 +392,10 @@ def display_tree(display_tasks=True, display_subtasks=False):
 
         task = Task(task_id)
         indent = " " * pad
-
-        if 'subtasks' in task.task:
-            for subtask in task.task['subtasks']:
+        if "subtasks" in task.task:
+            for subtask in task.task["subtasks"]:
                 print(f"{indent}task id: {subtask['id']}, name: {subtask['name']}")
+                _get_and_print_subtasks(subtask["id"], pad=pad + 2)
 
     for space in spaces:
         print(f"space id: {space['id']}, name: {space['name']}")
