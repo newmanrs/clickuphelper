@@ -86,7 +86,7 @@ class Task:  # Technically Clickup Task View
                 f"Unable to find custom field key '{name}'."
                 f" Available fields are {list(self.get_field_names())}"
             )
-            raise ValueError(msg) from e
+            raise KeyError(msg) from e
         return field
 
     def get_field_id(self, name):
