@@ -385,18 +385,33 @@ class FolderLists:
 class Tasks:
     def __init__(self, list_id):
 
+        # https://clickup.com/api/clickupreference/operation/GetTasks/
+        # This takes a lot more params/filters than implemented here
         url = "https://api.clickup.com/api/v2/list/" + list_id + "/task"
 
-        query = {"archived": "false"}
-        query = {}
+        query = {
+            "archived": "false",
+            "page": 0
+        }
 
-        response = requests.get(url, headers=headers, params=query)
+        self.tasks = []
+        self.task_names = []
+        self.task_ids = []
+        
+        # Clickup API endpoint is paginated - iterate until depleted.
+        while True:
+            response = requests.get(url, headers=headers, params=query)
+            data = response.json()
+            if len(data["tasks"]) == 0:  # Page is empty, break loop
+                break
+            #count = len(data["tasks"])
+            #print(f" adding {count}")
+            self.tasks += data["tasks"]
+            self.task_names += [i["name"] for i in data["tasks"]]
+            self.task_ids += [i["id"] for i in data["tasks"]]
+            query["page"]+=1
 
-        data = response.json()
-        self.tasks = data["tasks"]
-
-        self.task_names = [i["name"] for i in self.tasks]
-        self.task_ids = [i["id"] for i in self.tasks]
+        # Create name lookup
         self.task_lookup = {k: v for (k, v) in zip(self.task_names, self.task_ids)}
 
     def get_names(self):
@@ -427,6 +442,10 @@ def get_folder_id(space_name, folder_name):
 
 
 def get_list_id(space_name, folder_name, list_name):
+    """
+    Return clickup ID of list.  Folder name is optional if set
+    to none or empty string.
+    """
     spaces = Spaces()
     spaceid = spaces[space_name]
 
@@ -435,6 +454,23 @@ def get_list_id(space_name, folder_name, list_name):
         return FolderLists(folderid)[list_name]
     else:
         return SpaceLists(spaceid)[list_name]
+
+def get_list_task_ids(space_name, folder_name, list_name):
+    """
+    Return task ids inside of list.  Folder name is optional if set
+    to none or empty string.
+    """
+    spaces = Spaces()
+    spaceid = spaces[space_name]
+
+    if folder_name != "" or folder_name != None:
+        folderid = Folders(spaceid)[folder_name]
+        list_id = FolderLists(folderid)[list_name]
+    else:
+        list_id = SpaceLists(spaceid)[list_name]
+
+    tasks = Tasks(list_id)
+    return tasks.task_ids
 
 
 def display_tree(display_tasks=True, display_subtasks=False):

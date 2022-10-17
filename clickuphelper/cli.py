@@ -141,6 +141,19 @@ def tree(display):
 @click.argument("space_name")
 @click.argument("folder_name")
 @click.argument("list_name")
-def clickuplist(space_name, folder_name, list_name):
-
-    click.echo(clickuphelper.get_list_id(space_name, folder_name, list_name))
+@click.option(
+    "--display",
+    "-d",
+    type=click.Choice(["list_id", "tasks", "task_count"]),
+    default="list_id",
+)
+def clickuplist(space_name, folder_name, list_name, display):
+    if display == 'list_id':
+        click.echo(clickuphelper.get_list_id(space_name, folder_name, list_name))
+    elif display == 'tasks':
+        click.echo(clickuphelper.get_list_task_ids(space_name, folder_name, list_name))
+    elif display == 'task_count':
+        task_ids = clickuphelper.get_list_task_ids(space_name, folder_name, list_name)
+        click.echo(f"{len(task_ids)}")
+    else:
+        raise ValueError
