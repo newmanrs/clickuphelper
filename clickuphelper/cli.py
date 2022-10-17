@@ -33,6 +33,16 @@ def name(ctx):
 
 @task.command
 @click.pass_context
+def status(ctx):
+    """
+    Print task name
+    """
+    task = ctx.obj
+    click.echo(f"{task.status}")
+
+
+@task.command
+@click.pass_context
 @click.argument("names", nargs=-1)
 @click.option("--format", "-f", type=click.Choice(["val", "obj", "id"]), default="val")
 def cf(ctx, names, format):
@@ -97,6 +107,16 @@ def post_field(ctx, name, value):
     click.echo(ctx.obj.post_custom_field(name, value))
 
 
+@task.command
+@click.pass_context
+@click.argument("status")
+def post_status(ctx, status):
+    """
+    Post new task status
+    """
+    click.echo(ctx.obj.post_status(status))
+
+
 # @click.group(invoke_without_command=True)
 @click.command()
 @click.option(
@@ -115,3 +135,12 @@ def tree(display):
         clickuphelper.display_tree(display_tasks=True, display_subtasks=True)
     else:
         raise NotImplementedError("else statement ought to be unreachable")
+
+
+@click.command()
+@click.argument("space_name")
+@click.argument("folder_name")
+@click.argument("list_name")
+def clickuplist(space_name, folder_name, list_name):
+
+    click.echo(clickuphelper.get_list_id(space_name, folder_name, list_name))

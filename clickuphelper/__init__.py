@@ -46,7 +46,7 @@ class Task:  # Technically Clickup Task View
             query = {
                 "custom_task_ids": "true",
                 "team_id": team_id,
-                "include_subtasks": "true",
+                "include_subtasks": "true",  # Do not change to python True
             }
         else:
             query = {}
@@ -55,7 +55,7 @@ class Task:  # Technically Clickup Task View
         q = requests.get(url, headers=headers, params=query)
         task = q.json()
 
-        # Store full task object
+        # Store raw task response
         self.task = task
 
         # Set some basic useful metadata
@@ -63,6 +63,7 @@ class Task:  # Technically Clickup Task View
         self.creator = task["creator"]["username"]
         self.created = ts_ms_to_dt(task["date_created"])
         self.updated = ts_ms_to_dt(task["date_updated"])
+        self.status = task["status"]["status"]
 
         # Create dictionary of custom field names to custom field items
         # Hope that custom field names are unique - may cause bugs
@@ -131,7 +132,7 @@ class Task:  # Technically Clickup Task View
                 if len(v) == 1:  # Unpack list if length is 1
                     v = v[0]
             elif t == "date":
-                v = ts_ms_to_dt(field["date_created"])
+                v = ts_ms_to_dt(field["value"])
             elif t == "attachment":
                 v = field["value"]
                 # Consider future debugging/branching on v['type']
@@ -199,6 +200,24 @@ class Task:  # Technically Clickup Task View
 
         response = requests.post(url, json=payload, headers=headers, params=query)
         data = response.json()
+
+        # Should probably reinitialize on any post
+
+        return data
+
+    def post_status(self, status):
+
+        url = "https://api.clickup.com/api/v2/task/" + self.id
+
+        query = {"custom_task_ids": "true", "team_id": team_id}
+
+        # https://clickup.com/api/clickupreference/operation/UpdateTask/
+        # Same endpoint can also update name/desc/ several other fields
+        payload = {"status": str(status)}
+
+        # payload = {"status": {"orderindex" : 0 }}
+        response = requests.put(url, json=payload, headers=headers, params=query)
+        data = response.json()
         return data
 
 
@@ -247,6 +266,10 @@ class Spaces:
             msg = f"Space names in workspace are {self.space_names}"
             raise KeyError(msg) from e
 
+    def __getitem__(self, name):
+
+        return self.get_id(name)
+
     def __iter__(self):
         return iter(self.spaces)
 
@@ -281,6 +304,10 @@ class Folders:
             msg = f"Folder names are {self.folder_names}"
             raise KeyError(msg) from e
 
+    def __getitem__(self, name):
+
+        return self.get_id(name)
+
     def __iter__(self):
         return iter(self.folders)
 
@@ -301,16 +328,20 @@ class SpaceLists:
         self.list_ids = [i["id"] for i in self.lists]
         self.list_lookup = {k: v for (k, v) in zip(self.list_names, self.list_ids)}
 
-        def get_names(self):
-            return self.list_names
+    def get_names(self):
+        return self.list_names
 
-        def get_id(self, name):
+    def get_id(self, name):
 
-            try:
-                return self.list_lookup[name]
-            except KeyError as e:
-                msg = f"List names are {self.list_names}"
-                raise KeyError(msg) from e
+        try:
+            return self.list_lookup[name]
+        except KeyError as e:
+            msg = f"List names are {self.list_names}"
+            raise KeyError(msg) from e
+
+    def __getitem__(self, name):
+
+        return self.get_id(name)
 
     def __iter__(self):
         return iter(self.lists)
@@ -342,6 +373,10 @@ class FolderLists:
         except KeyError as e:
             msg = f"List names are {self.list_names}"
             raise KeyError(msg) from e
+
+    def __getitem__(self, name):
+
+        return self.get_id(name)
 
     def __iter__(self):
         return iter(self.lists)
@@ -375,8 +410,31 @@ class Tasks:
             msg = f"Task names are {self.task_names}"
             raise KeyError(msg) from e
 
+    def __getitem__(self, name):
+
+        return self.get_id(name)
+
     def __iter__(self):
         return iter(self.tasks)
+
+
+def get_space_id(space_name):
+    raise NotImplementedError
+
+
+def get_folder_id(space_name, folder_name):
+    raise NotImplementedError
+
+
+def get_list_id(space_name, folder_name, list_name):
+    spaces = Spaces()
+    spaceid = spaces[space_name]
+
+    if folder_name != "" or folder_name != None:
+        folderid = Folders(spaceid)[folder_name]
+        return FolderLists(folderid)[list_name]
+    else:
+        return SpaceLists(spaceid)[list_name]
 
 
 def display_tree(display_tasks=True, display_subtasks=False):
@@ -386,10 +444,10 @@ def display_tree(display_tasks=True, display_subtasks=False):
     Options to include tasks and subtasks significantly slow output
     """
 
-    spaces = Spaces()
-
     def _get_and_print_subtasks(task_id, pad=6):
-
+        """
+        Recurse over tasks/subtasks
+        """
         task = Task(task_id)
         indent = " " * pad
         if "subtasks" in task.task:
@@ -397,6 +455,7 @@ def display_tree(display_tasks=True, display_subtasks=False):
                 print(f"{indent}task id: {subtask['id']}, name: {subtask['name']}")
                 _get_and_print_subtasks(subtask["id"], pad=pad + 2)
 
+    spaces = Spaces()
     for space in spaces:
         print(f"space id: {space['id']}, name: {space['name']}")
         for folder in Folders(space["id"]):
