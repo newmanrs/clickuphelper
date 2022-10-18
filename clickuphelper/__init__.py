@@ -97,8 +97,8 @@ class Task:  # Technically Clickup Task View
 
         field = self.get_field_obj(name)
 
-        def print_field():
-            print(f"Looking up custom field:  {name}")
+        def print_field(prefix = ''):
+            print(f"{prefix}Looking up custom field:  {name}")
             print(json.dumps(field, indent=2))
 
         # Refactor as match/case once 3.10 is sane
@@ -143,8 +143,7 @@ class Task:  # Technically Clickup Task View
                     f"No get_field case for clickup task type '{t}'"
                 )
         except Exception as e:
-            print("ERROR:")
-            print_field()
+            print_field('ERROR: ')
             raise e
 
         if self.verbose:
@@ -220,6 +219,17 @@ class Task:  # Technically Clickup Task View
         data = response.json()
         return data
 
+class List():
+
+    def __init__(self, list_id):
+        url = "https://api.clickup.com/api/v2/list/" + list_id
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        self.data = data
+        self.id = data['id']
+        self.name = data['name']
+        self.statuses = data['statuses']
+        self.status_names = [status['status'] for status in self.statuses]
 
 class Workspace:
 
@@ -322,6 +332,7 @@ class SpaceLists:
         response = requests.get(url, headers=headers, params=query)
 
         data = response.json()
+        self.data = data
         self.lists = data["lists"]
 
         self.list_names = [i["name"] for i in self.lists]
@@ -357,6 +368,7 @@ class FolderLists:
         response = requests.get(url, headers=headers, params=query)
 
         data = response.json()
+        self.data = data
         self.lists = data["lists"]
 
         self.list_names = [i["name"] for i in self.lists]
@@ -440,7 +452,6 @@ def get_space_id(space_name):
 def get_folder_id(space_name, folder_name):
     raise NotImplementedError
 
-
 def get_list_id(space_name, folder_name, list_name):
     """
     Return clickup ID of list.  Folder name is optional if set
@@ -471,6 +482,12 @@ def get_list_task_ids(space_name, folder_name, list_name):
 
     tasks = Tasks(list_id)
     return tasks.task_ids
+
+def get_list(space_name, folder_name, list_name):
+    
+    list_id = get_list_id(space_name, folder_name, list_name)
+
+    return List(list_id)
 
 
 def display_tree(display_tasks=True, display_subtasks=False):
