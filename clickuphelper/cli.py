@@ -144,24 +144,26 @@ def tree(display):
 @click.option(
     "--display",
     "-d",
-    type=click.Choice(["list_id", "list_obj", "status_names", "statuses", "tasks", "task_count"]),
+    type=click.Choice(
+        ["list_id", "list_obj", "status_names", "statuses", "tasks", "task_count"]
+    ),
     default="list_id",
 )
 def clickuplist(space_name, folder_name, list_name, display):
-    if display == 'list_id':
+    if display == "list_id":
         click.echo(clickuphelper.get_list_id(space_name, folder_name, list_name))
-    elif display == 'list_obj':
+    elif display == "list_obj":
         l = clickuphelper.get_list(space_name, folder_name, list_name)
         click.echo(json.dumps(l.data, indent=2))
-    elif display == 'status_names':
+    elif display == "status_names":
         l = clickuphelper.get_list(space_name, folder_name, list_name)
         click.echo(l.status_names)
-    elif display == 'statuses':
+    elif display == "statuses":
         l = clickuphelper.get_list(space_name, folder_name, list_name)
         click.echo(l.statuses)
-    elif display == 'tasks':
+    elif display == "tasks":
         click.echo(clickuphelper.get_list_task_ids(space_name, folder_name, list_name))
-    elif display == 'task_count':
+    elif display == "task_count":
         task_ids = clickuphelper.get_list_task_ids(space_name, folder_name, list_name)
         click.echo(f"{len(task_ids)}")
     else:

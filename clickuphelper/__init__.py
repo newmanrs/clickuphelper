@@ -30,12 +30,15 @@ def ts_ms_to_dt(ts, except_if_year_1970=True):
 
 
 class Task:  # Technically Clickup Task View
-    def __init__(self, task_id, verbose=True, include_subtasks=True):
+    def __init__(
+        self, task_id, verbose=True, include_subtasks=True, except_missing_cf_value=True
+    ):
         """
         Initialize container class for working with a clickup task
         """
         self.verbose = verbose
         self.include_subtasks = include_subtasks
+        self.except_missing_cf_value = except_missing_cf_value
         self.reinitialize(task_id)
 
     def reinitialize(self, task_id):
@@ -59,7 +62,12 @@ class Task:  # Technically Clickup Task View
         self.task = task
 
         # Set some basic useful metadata
-        self.name = task["name"]
+        try:
+            self.name = task["name"]
+        except Exception as e:
+            msg = json.dumps(task)
+            raise Exception(f"No key name {msg}")
+
         self.creator = task["creator"]["username"]
         self.created = ts_ms_to_dt(task["date_created"])
         self.updated = ts_ms_to_dt(task["date_updated"])
@@ -97,8 +105,8 @@ class Task:  # Technically Clickup Task View
 
         field = self.get_field_obj(name)
 
-        def print_field(prefix = ''):
-            print(f"{prefix}Looking up custom field:  {name}")
+        def print_field(prefix=""):
+            print(f"{prefix}Looking up custom field:  {name} in task {self.id}")
             print(json.dumps(field, indent=2))
 
         # Refactor as match/case once 3.10 is sane
@@ -143,8 +151,14 @@ class Task:  # Technically Clickup Task View
                     f"No get_field case for clickup task type '{t}'"
                 )
         except Exception as e:
-            print_field('ERROR: ')
-            raise e
+            if self.except_missing_cf_value:
+                if self.verbose:
+                    print_field("ERROR: ")
+                raise e
+            else:
+                if self.verbose:
+                    print_field("ERROR: ")
+                return None
 
         if self.verbose:
             print_field()
@@ -219,17 +233,18 @@ class Task:  # Technically Clickup Task View
         data = response.json()
         return data
 
-class List():
 
+class List:
     def __init__(self, list_id):
         url = "https://api.clickup.com/api/v2/list/" + list_id
         response = requests.get(url, headers=headers)
         data = response.json()
         self.data = data
-        self.id = data['id']
-        self.name = data['name']
-        self.statuses = data['statuses']
-        self.status_names = [status['status'] for status in self.statuses]
+        self.id = data["id"]
+        self.name = data["name"]
+        self.statuses = data["statuses"]
+        self.status_names = [status["status"] for status in self.statuses]
+
 
 class Workspace:
 
@@ -395,33 +410,32 @@ class FolderLists:
 
 
 class Tasks:
-    def __init__(self, list_id):
+    def __init__(self, list_id, include_closed=False):
 
         # https://clickup.com/api/clickupreference/operation/GetTasks/
         # This takes a lot more params/filters than implemented here
         url = "https://api.clickup.com/api/v2/list/" + list_id + "/task"
 
-        query = {
-            "archived": "false",
-            "page": 0
-        }
+        query = {"archived": "false", "page": 0}
+        if include_closed:
+            query["include_closed"] = "true"
 
         self.tasks = []
         self.task_names = []
         self.task_ids = []
-        
+
         # Clickup API endpoint is paginated - iterate until depleted.
         while True:
             response = requests.get(url, headers=headers, params=query)
             data = response.json()
             if len(data["tasks"]) == 0:  # Page is empty, break loop
                 break
-            #count = len(data["tasks"])
-            #print(f" adding {count}")
+            # count = len(data["tasks"])
+            # print(f" adding {count}")
             self.tasks += data["tasks"]
             self.task_names += [i["name"] for i in data["tasks"]]
             self.task_ids += [i["id"] for i in data["tasks"]]
-            query["page"]+=1
+            query["page"] += 1
 
         # Create name lookup
         self.task_lookup = {k: v for (k, v) in zip(self.task_names, self.task_ids)}
@@ -452,6 +466,7 @@ def get_space_id(space_name):
 def get_folder_id(space_name, folder_name):
     raise NotImplementedError
 
+
 def get_list_id(space_name, folder_name, list_name):
     """
     Return clickup ID of list.  Folder name is optional if set
@@ -466,7 +481,8 @@ def get_list_id(space_name, folder_name, list_name):
     else:
         return SpaceLists(spaceid)[list_name]
 
-def get_list_task_ids(space_name, folder_name, list_name):
+
+def get_list_task_ids(space_name, folder_name, list_name, include_closed=False):
     """
     Return task ids inside of list.  Folder name is optional if set
     to none or empty string.
@@ -480,11 +496,12 @@ def get_list_task_ids(space_name, folder_name, list_name):
     else:
         list_id = SpaceLists(spaceid)[list_name]
 
-    tasks = Tasks(list_id)
+    tasks = Tasks(list_id, include_closed)
     return tasks.task_ids
 
+
 def get_list(space_name, folder_name, list_name):
-    
+
     list_id = get_list_id(space_name, folder_name, list_name)
 
     return List(list_id)
