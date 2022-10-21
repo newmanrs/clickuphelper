@@ -35,7 +35,7 @@ def name(ctx):
 @click.pass_context
 def status(ctx):
     """
-    Print task name
+    Print task status 
     """
     task = ctx.obj
     click.echo(f"{task.status}")
@@ -44,7 +44,7 @@ def status(ctx):
 @task.command
 @click.pass_context
 @click.argument("names", nargs=-1)
-@click.option("--format", "-f", type=click.Choice(["val", "obj", "id"]), default="val")
+@click.option("--display", "-d", type=click.Choice(["val", "obj", "id"]), default="val")
 def cf(ctx, names, format):
     """
     Print custom field object
