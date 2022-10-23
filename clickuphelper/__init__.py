@@ -210,7 +210,7 @@ class Task:  # Technically Clickup Task View
 
     def post_custom_field(self, field, value):
 
-        #print(f"field {field}, value {value}")
+        # print(f"field {field}, value {value}")
         fid = self.get_field_id(field)
         ftype = self.get_field_type(field)
         url = f"https://api.clickup.com/api/v2/task/{self.id}/field/{fid}"
@@ -235,11 +235,12 @@ class Task:  # Technically Clickup Task View
         query = {}
 
         response = requests.post(url, json=payload, headers=headers, params=query)
-        #data = response.json()
-        #print(response.status_code)
+        # data = response.json()
+        # print(response.status_code)
 
         # Should probably reinitialize on any post
 
+        print(response.text)
         return response
 
     def post_status(self, status):
