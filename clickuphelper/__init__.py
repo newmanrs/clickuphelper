@@ -210,14 +210,16 @@ class Task:  # Technically Clickup Task View
 
     def post_custom_field(self, field, value):
 
-        print(f"field {field}, value {value}")
+        #print(f"field {field}, value {value}")
         fid = self.get_field_id(field)
         ftype = self.get_field_type(field)
         url = f"https://api.clickup.com/api/v2/task/{self.id}/field/{fid}"
 
         payload = {"value": value}
         if ftype == "drop_down":
-            if isinstance("value", str):
+            try:
+                int(value)
+            except ValueError:
                 # Need to translate string to underlying clickup integer lookup
                 obj = self.get_field_obj(field)
                 lookup = {}
@@ -225,16 +227,20 @@ class Task:  # Technically Clickup Task View
                 for item in obj["type_config"]["options"]:
                     lookup[item["name"]] = item["orderindex"]
                 print(lookup)
-                payload["value"] = lookup[value]
+                try:
+                    payload["value"] = lookup[value]
+                except KeyError:
+                    pass
 
         query = {}
 
         response = requests.post(url, json=payload, headers=headers, params=query)
-        data = response.json()
+        #data = response.json()
+        #print(response.status_code)
 
         # Should probably reinitialize on any post
 
-        return data
+        return response
 
     def post_status(self, status):
 
