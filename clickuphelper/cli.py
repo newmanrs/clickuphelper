@@ -35,7 +35,7 @@ def name(ctx):
 @click.pass_context
 def status(ctx):
     """
-    Print task status 
+    Print task status
     """
     task = ctx.obj
     click.echo(f"{task.status}")
@@ -45,7 +45,7 @@ def status(ctx):
 @click.pass_context
 @click.argument("names", nargs=-1)
 @click.option("--display", "-d", type=click.Choice(["val", "obj", "id"]), default="val")
-def cf(ctx, names, format):
+def cf(ctx, names, display):
     """
     Print custom field object
     """
@@ -54,14 +54,14 @@ def cf(ctx, names, format):
         click.echo(f"Task custom field names are: {ctx.obj.get_field_names()}")
     else:
         for name in names:
-            if format == "val":
+            if display == "val":
                 click.echo(ctx.obj[name])
-            elif format == "id":
+            elif display == "id":
                 click.echo(ctx.obj.get_field_id(name))
-            elif format == "obj":
+            elif display == "obj":
                 click.echo(json.dumps(ctx.obj.get_field_obj(name), indent=2))
             else:
-                raise ValueError("Unhandled path for choice format {format}")
+                raise ValueError("Unhandled path for choice format {display}")
 
 
 @task.command

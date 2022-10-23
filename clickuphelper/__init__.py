@@ -5,10 +5,13 @@ import datetime
 import os
 from collections import defaultdict
 
-
-cu_key = os.environ["CLICKUP_API_KEY"]
-team_id = os.environ["CLICKUP_TEAM_ID"]
-headers = {"Authorization": cu_key}
+if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is None:
+    cu_key = os.environ["CLICKUP_API_KEY"]
+    team_id = os.environ["CLICKUP_TEAM_ID"]
+    headers = {"Authorization": cu_key}
+else:
+    team_id = None  # AWS Lambda Functions must set modules' team_id
+    headers = None  # AWS Lambda Functions must set modules' header
 
 
 def ts_ms_to_dt(ts, except_if_year_1970=True):
@@ -100,6 +103,10 @@ class Task:  # Technically Clickup Task View
     def get_field_id(self, name):
 
         return self.get_field_obj(name)["id"]
+
+    def get_field_type(self, name):
+
+        return self.get_field_obj(name)["type"]
 
     def get_field(self, name):
 
@@ -203,11 +210,22 @@ class Task:  # Technically Clickup Task View
 
     def post_custom_field(self, field, value):
 
+        print(f"field {field}, value {value}")
         fid = self.get_field_id(field)
-
+        ftype = self.get_field_type(field)
         url = f"https://api.clickup.com/api/v2/task/{self.id}/field/{fid}"
 
         payload = {"value": value}
+        if ftype == "drop_down":
+            if isinstance("value", str):
+                # Need to translate string to underlying clickup integer lookup
+                obj = self.get_field_obj(field)
+                lookup = {}
+                print(obj["type_config"]["options"])
+                for item in obj["type_config"]["options"]:
+                    lookup[item["name"]] = item["orderindex"]
+                print(lookup)
+                payload["value"] = lookup[value]
 
         query = {}
 
