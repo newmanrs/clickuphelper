@@ -162,9 +162,20 @@ def clickuplist(space_name, folder_name, list_name, display):
         l = clickuphelper.get_list(space_name, folder_name, list_name)
         click.echo(l.statuses)
     elif display == "tasks":
-        click.echo(clickuphelper.get_list_task_ids(space_name, folder_name, list_name))
+        click.echo(
+            clickuphelper.get_list_task_ids(
+                space_name, folder_name, list_name, include_closed=True
+            )
+        )
     elif display == "task_count":
-        task_ids = clickuphelper.get_list_task_ids(space_name, folder_name, list_name)
+        task_ids = clickuphelper.get_list_task_ids(
+            space_name, folder_name, list_name, include_closed=True
+        )
         click.echo(f"{len(task_ids)}")
     else:
         raise NotImplementedError("unhandled display option")
+
+
+@click.command()
+def clickuptime():
+    click.echo(json.dumps(clickuphelper.time_tracking(), indent=2))

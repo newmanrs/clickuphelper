@@ -11,6 +11,7 @@ setup(
             "clickuptask=clickuphelper.cli:task",
             "clickuptree=clickuphelper.cli:tree",
             "clickuplist=clickuphelper.cli:clickuplist",
+            "clickuptime=clickuphelper.cli:clickuptime",
         ],
     },
 )

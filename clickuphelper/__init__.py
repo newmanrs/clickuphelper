@@ -583,3 +583,34 @@ def get_task_templates():
 
 def make_task_from_template(list_id, task_id):
     raise NotImplementedError
+
+
+def time_tracking():
+    url = "https://api.clickup.com/api/v2/team/" + team_id + "/time_entries"
+
+    # TODO:  Find username ids w/o enterprise features
+    # TODO:  start date/end date as calendar dates (10/25/2018)
+    # TODO:  Aggregate by task, date
+
+    query = {
+        "start_date": int(datetime.datetime(2022, 10, 20).timestamp() * 1000),
+        "end_date": int(datetime.datetime(2022, 10, 30).timestamp() * 1000),
+        "assignee": "60001408",  # newmanrs
+        "include_task_tags": "true",
+        "include_location_names": "true",
+        "space_id": "54784007",
+        # "folder_id": "0",
+        # "list_id": "0",
+        # "task_id": "0",
+        # "custom_task_ids": "true",
+        "team_id": team_id,
+    }
+
+    response = requests.get(url, headers=headers, params=query)
+
+    data = response.json()
+    # print(data)
+    durations = [int(item["duration"]) / 1000 / 60 / 60 for item in data["data"]]
+    # print(durations)
+    return sum(durations)
+    return durations
