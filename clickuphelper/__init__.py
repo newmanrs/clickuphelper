@@ -1,9 +1,7 @@
 import requests
-import inspect
 import json
 import datetime
 import os
-from collections import defaultdict
 
 if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is None:
     cu_key = os.environ["CLICKUP_API_KEY"]
@@ -30,6 +28,14 @@ def ts_ms_to_dt(ts, except_if_year_1970=True):
         raise ValueError(msg)
 
     return dt
+
+
+class MissingCustomField(KeyError):
+    pass
+
+
+class MissingCustomFieldValue(KeyError):
+    pass
 
 
 class Task:  # Technically Clickup Task View
@@ -69,7 +75,7 @@ class Task:  # Technically Clickup Task View
             self.name = task["name"]
         except Exception as e:
             msg = json.dumps(task)
-            raise Exception(f"No key name {msg}")
+            raise Exception(f"No key name {msg}") from e
 
         self.creator = task["creator"]["username"]
         self.created = ts_ms_to_dt(task["date_created"])
@@ -97,7 +103,7 @@ class Task:  # Technically Clickup Task View
                 f"Unable to find custom field key '{name}'."
                 f" Available fields are {list(self.get_field_names())}"
             )
-            raise KeyError(msg) from e
+            raise MissingCustomField(msg) from e
         return field
 
     def get_field_id(self, name):
@@ -124,13 +130,13 @@ class Task:  # Technically Clickup Task View
                 # Cast to int, if fails, try cast to float
                 try:
                     v = int(field["value"])
-                except ValueError as e:
+                except ValueError:
                     try:
                         v = float(field["value"])
                     except ValueError as e:
                         raise ValueError(
                             f"Cannot cast {field['value']} to int or float"
-                        )
+                        ) from e
             elif t == "drop_down":
                 """
                 Clickup dropdowns give an integer value and a
@@ -157,11 +163,11 @@ class Task:  # Technically Clickup Task View
                 raise NotImplementedError(
                     f"No get_field case for clickup task type '{t}'"
                 )
-        except Exception as e:
+        except KeyError as e:
             if self.except_missing_cf_value:
                 if self.verbose:
                     print_field("ERROR: ")
-                raise e
+                raise MissingCustomFieldValue from e
             else:
                 if self.verbose:
                     print_field("ERROR: ")
@@ -177,7 +183,7 @@ class Task:  # Technically Clickup Task View
         """
         return self.get_field(item)
 
-    def to_file(filename, indent=2):
+    def to_file(self, filename, indent=2):
         """
         Write raw clickup task json to disk
         """
@@ -500,7 +506,7 @@ def get_list_id(space_name, folder_name, list_name):
     spaces = Spaces()
     spaceid = spaces[space_name]
 
-    if folder_name != "" or folder_name != None:
+    if folder_name != "" or folder_name is not None:
         folderid = Folders(spaceid)[folder_name]
         return FolderLists(folderid)[list_name]
     else:
@@ -515,7 +521,7 @@ def get_list_task_ids(space_name, folder_name, list_name, include_closed=False):
     spaces = Spaces()
     spaceid = spaces[space_name]
 
-    if folder_name != "" or folder_name != None:
+    if folder_name != "" or folder_name is not None:
         folderid = Folders(spaceid)[folder_name]
         list_id = FolderLists(folderid)[list_name]
     else:
@@ -593,7 +599,7 @@ def time_tracking():
     # TODO:  Aggregate by task, date
 
     query = {
-        "start_date": int(datetime.datetime(2022, 10, 20).timestamp() * 1000),
+        "start_date": int(datetime.datetime(2022, 10, 1).timestamp() * 1000),
         "end_date": int(datetime.datetime(2022, 10, 30).timestamp() * 1000),
         "assignee": "60001408",  # newmanrs
         "include_task_tags": "true",
