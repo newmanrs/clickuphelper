@@ -167,7 +167,7 @@ class Task:  # Technically Clickup Task View
             if self.except_missing_cf_value:
                 if self.verbose:
                     print_field("ERROR: ")
-                raise MissingCustomFieldValue from e
+                raise MissingCustomFieldValue(f"task {self.id} missing custom field value {field['name']}") from e
             else:
                 if self.verbose:
                     print_field("ERROR: ")
