@@ -190,14 +190,14 @@ class Task:  # Technically Clickup Task View
         with open(filename, "w") as f:
             json.dump(f, self.task, indent=indent)
 
-    def post_comment(self, comment, notify_all=False):
+    def post_comment(self, comment, notify_all=False, reinitialize=True):
 
         url = f"https://api.clickup.com/api/v2/task/{self.id}/comment"
 
         payload = {
             "comment_text": f"{comment}",
             "assignee": None,
-            "notify_all": notify_all,
+            "notify_all": notify_all,  # This needs to be tested, may need to be "true" or "false" as str
         }
 
         # Custom task ids require team id too
@@ -212,9 +212,12 @@ class Task:  # Technically Clickup Task View
 
         data = response.json()
 
+        if reinitialize:
+            self.reinitialize(self.id)
+
         return data
 
-    def post_custom_field(self, field, value):
+    def post_custom_field(self, field, value, reinitialize=True):
 
         # print(f"field {field}, value {value}")
         fid = self.get_field_id(field)
@@ -232,7 +235,7 @@ class Task:  # Technically Clickup Task View
                 print(obj["type_config"]["options"])
                 for item in obj["type_config"]["options"]:
                     lookup[item["name"]] = item["orderindex"]
-                print(lookup)
+                #print(lookup)
                 try:
                     payload["value"] = lookup[value]
                 except KeyError:
@@ -241,15 +244,14 @@ class Task:  # Technically Clickup Task View
         query = {}
 
         response = requests.post(url, json=payload, headers=headers, params=query)
-        # data = response.json()
-        # print(response.status_code)
 
-        # Should probably reinitialize on any post
+        if reinitialize:
+            self.reinitialize(self.id)
 
-        print(response.text)
+        #print(response.text)
         return response
 
-    def post_status(self, status):
+    def post_status(self, status, reinitialize = True):
 
         url = "https://api.clickup.com/api/v2/task/" + self.id
 
@@ -262,6 +264,10 @@ class Task:  # Technically Clickup Task View
         # payload = {"status": {"orderindex" : 0 }}
         response = requests.put(url, json=payload, headers=headers, params=query)
         data = response.json()
+
+        if reinitialize:
+            self.reinitialize(self.id)
+
         return data
 
 
