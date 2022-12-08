@@ -41,7 +41,7 @@ class MissingCustomFieldValue(KeyError):
 class Task:  # Technically Clickup Task View
     def __init__(
         self,
-        task_id: str | dict,
+        task_id, # : str | dict,  # add type annotation back whenever we get 3.10
         verbose=False,
         include_subtasks=False,
         except_missing_cf_value=True
