@@ -40,10 +40,15 @@ class MissingCustomFieldValue(KeyError):
 
 class Task:  # Technically Clickup Task View
     def __init__(
-        self, task_id, verbose=True, include_subtasks=True, except_missing_cf_value=True
+        self,
+        task_id: str | dict,
+        verbose=False,
+        include_subtasks=False,
+        except_missing_cf_value=True
     ):
         """
-        Initialize container class for working with a clickup task
+        Initialize container class for working with a clickup task from a task_id (str) or
+        a clickup task object (dict).
         """
         self.verbose = verbose
         self.include_subtasks = include_subtasks
@@ -54,18 +59,30 @@ class Task:  # Technically Clickup Task View
 
         self.id = task_id
 
-        if self.include_subtasks:
-            query = {
-                "custom_task_ids": "true",
-                "team_id": team_id,
-                "include_subtasks": "true",  # Do not change to python True
-            }
-        else:
-            query = {}
+        if isinstance(task_id, str):
+            # Query for task object
+            if self.include_subtasks:
+                query = {
+                    "custom_task_ids": "true",
+                    "team_id": team_id,
+                    "include_subtasks": "true",  # Do not change to python True
+                }
+            else:
+                query = {}
 
-        url = f"https://api.clickup.com/api/v2/task/{task_id}"
-        q = requests.get(url, headers=headers, params=query)
-        task = q.json()
+            url = f"https://api.clickup.com/api/v2/task/{task_id}"
+            q = requests.get(url, headers=headers, params=query)
+            task = q.json()
+        elif isinstance(task_id, dict):
+
+            if self.include_subtasks:
+                raise NotImplementedError("Subtasks not implemented for initialization from a task object")
+                # The point of dict initialization is to allow the creation of these task objects
+                # in the class Tasks hitting the all-tasks in a folder endpoint.  These would have to know
+                # to include subtasks or not at that level.  We could fall back and use the task_id
+                # to query the single endpoint, but that defeats the performance point of using the paginated
+                # endpoint.
+            task = task_id # use the task directly.
 
         # Store raw task response
         self.task = task
@@ -457,7 +474,7 @@ class Tasks:
         if include_closed:
             query["include_closed"] = "true"
 
-        self.tasks = []
+        self.tasks = {}
         self.task_names = []
         self.task_ids = []
 
@@ -469,32 +486,47 @@ class Tasks:
                 break
             # count = len(data["tasks"])
             # print(f" adding {count}")
-            self.tasks += data["tasks"]
+
+            #print(json.dumps(data["tasks"],indent=2))
+            for task in data["tasks"]:
+                self.tasks[task["id"]] = Task(task)
+
             self.task_names += [i["name"] for i in data["tasks"]]
             self.task_ids += [i["id"] for i in data["tasks"]]
             query["page"] += 1
 
-        # Create name lookup
-        self.task_lookup = {k: v for (k, v) in zip(self.task_names, self.task_ids)}
 
-    def get_names(self):
-        return self.task_names
-
-    def get_id(self, name):
-
+    def __getitem__(self, task_id):
         try:
-            return self.task_lookup[name]
+            return self.tasks[task_id]
         except KeyError as e:
-            msg = f"Task names are {self.task_names}"
-            raise KeyError(msg) from e
-
-    def __getitem__(self, name):
-
-        return self.get_id(name)
+            msg = f"Task ids in this folder are {self.task_ids}"
+        #return self.get_id(name)
 
     def __iter__(self):
         return iter(self.tasks)
 
+    def get_field(self, fields):
+        if isinstance(fields,str):
+            fields = [fields]
+
+        ret = {}
+        for task_id in self:
+            task_fields = {}
+            found_fields = 0
+            for field in fields:
+                try: 
+                    value = self[task_id].get_field(field)
+                    found_fields += 1
+                except MissingCustomFieldValue:
+                    value = None
+                    pass
+                print(f"{field} {task_id} {value}")
+                task_fields[field]={task_id : value}
+            if found_fields:
+                # Only add task_id to return if at least one of the fields requested returns
+                ret[task_id] = task_fields
+        return ret
 
 def get_space_id(space_name):
     raise NotImplementedError
@@ -519,9 +551,9 @@ def get_list_id(space_name, folder_name, list_name):
         return SpaceLists(spaceid)[list_name]
 
 
-def get_list_task_ids(space_name, folder_name, list_name, include_closed=False):
+def get_list_tasks(space_name, folder_name, list_name, include_closed=True):
     """
-    Return task ids inside of list.  Folder name is optional if set
+    Return tasks inside of list.  Folder name is optional if set
     to none or empty string.
     """
     spaces = Spaces()
@@ -534,8 +566,16 @@ def get_list_task_ids(space_name, folder_name, list_name, include_closed=False):
         list_id = SpaceLists(spaceid)[list_name]
 
     tasks = Tasks(list_id, include_closed)
-    return tasks.task_ids
+    return tasks
 
+
+def get_list_task_ids(space_name, folder_name, list_name, include_closed=True):
+    """
+    Return tasks inside of list.  Folder name is optional if set
+    to none or empty string.
+    """
+    tasks = get_list_tasks(space_name, folder_name, list_name, include_closed)
+    return tasks.task_ids
 
 def get_list(space_name, folder_name, list_name):
 

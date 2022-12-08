@@ -145,7 +145,7 @@ def tree(display):
     "--display",
     "-d",
     type=click.Choice(
-        ["list_id", "list_obj", "status_names", "statuses", "tasks", "task_count"]
+        ["list_id", "list_obj", "status_names", "statuses", "task_ids", "task_count"]
     ),
     default="list_id",
 )
@@ -161,7 +161,7 @@ def clickuplist(space_name, folder_name, list_name, display):
     elif display == "statuses":
         l = clickuphelper.get_list(space_name, folder_name, list_name)
         click.echo(l.statuses)
-    elif display == "tasks":
+    elif display == "task_ids":
         click.echo(
             clickuphelper.get_list_task_ids(
                 space_name, folder_name, list_name, include_closed=True
@@ -173,7 +173,7 @@ def clickuplist(space_name, folder_name, list_name, display):
         )
         click.echo(f"{len(task_ids)}")
     else:
-        raise NotImplementedError("unhandled display option")
+        raise NotImplementedError(f"unhandled display option {display}")
 
 
 @click.command()
