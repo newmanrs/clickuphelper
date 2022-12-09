@@ -261,7 +261,7 @@ class Task:  # Technically Clickup Task View
                 try:
                     payload["value"] = lookup[value]
                 except KeyError:
-                    pass
+                    pass  # maybe unwise.
 
         query = {}
 
@@ -293,16 +293,96 @@ class Task:  # Technically Clickup Task View
         return data
 
 
+def post_task(list_id, task_name, task_description="", status="Open", custom_fields={}):
+
+    url = f"https://api.clickup.com/api/v2/list/{list_id}/task"
+
+    # Need to retrieve information about list in question
+    postlist = List(list_id)
+
+    #query = {
+    #    "custom_task_ids": "true",
+    #     "team_id": team_id
+    #}
+
+    """
+    Convert format of custom_fields dict from {field_name : value} to {field_uuid: value}
+    """
+
+    cf_uuid_values_list = []
+    for fname, fvalue in custom_fields.items():
+        if fname not in postlist.field_lookup.keys():
+            raise KeyError(f"Custom field {fname} not found in {postlist.field_lookup.keys()}")
+
+        # TODO: type checks on field_obj['type']
+        
+        # Dropdowns need more QoL to accept either integer value that clickup uses,
+        # or their human readable named values.
+        field_obj = postlist.field_lookup[fname]
+        if field_obj['type'] == 'drop_down':
+            try:
+                int(fvalue)
+            except ValueError:
+                # Need to translate string to underlying clickup integer lookup
+                # beware the confusing that "fvalue" is a name now pointing to another value
+                lookup = {}
+                print(field_obj["type_config"]["options"])
+                for item in field_obj["type_config"]["options"]:
+                    lookup[item["name"]] = item["orderindex"]
+                fvalue = lookup[fvalue]
+        # Assemble cf dict
+        uuid_value = {}
+        uuid_value['id'] = field_obj['id']
+        uuid_value['value'] = fvalue
+        # Append
+        cf_uuid_values_list.append(uuid_value)
+
+    payload = {
+        "name": task_name,
+        "description": task_description,
+        # "assignees": [183],
+        # "tags": ["tag name 1"],
+        "status": status,
+        # "priority": 3,
+        # "due_date": 1508369194377,
+        # "due_date_time": False,
+        # "time_estimate": 8640000,
+        # "start_date": 1567780450202,
+        # "start_date_time": False,
+        # "notify_all": True,
+        # "parent": None,
+        # "links_to": None,
+        # "check_required_custom_fields": True,
+        "custom_fields": cf_uuid_values_list,
+    }
+    print(json.dumps(payload, indent=2))
+
+    response = requests.post(url, json=payload, headers=headers) #, params=query)
+    response.raise_for_status()
+    return response
+
 class List:
     def __init__(self, list_id):
         url = "https://api.clickup.com/api/v2/list/" + list_id
         response = requests.get(url, headers=headers)
         data = response.json()
+        url = "https://api.clickup.com/api/v2/list/" + list_id + "/field"
+        response = requests.get(url, headers=headers)
+        self.fields = response.json()['fields']
+
+        self.field_lookup = {cf['name']:cf for cf in self.fields}
+
         self.data = data
         self.id = data["id"]
         self.name = data["name"]
         self.statuses = data["statuses"]
         self.status_names = [status["status"] for status in self.statuses]
+
+    def get_field_names(self, ):
+        return self.field_lookup.keys()
+
+    def get_field(self, field_name):
+        return self.field_lookup[field_name]
 
 
 class Workspace:
@@ -556,8 +636,7 @@ class Tasks:
                 else:
                     comparator = filt[2]
 
-
-                #print(f"name {fieldname}, value {filtvalue}, comparator {comparator}")
+                # print(f"name {fieldname}, value {filtvalue}, comparator {comparator}")
                 try:
                     task_value = self[task_id].get_field(fieldname)
                 except MissingCustomFieldValue:
@@ -569,7 +648,9 @@ class Tasks:
                         matched_fields += 1
                         task_fields[fieldname] = task_value
                 except TypeError as e:
-                    print(e)
+                    # This is probably type errors ebtween Nonetype and int (maybe some other types)
+                    # but all of these (far as I'm aware) are not a match in the comparator.
+                    # print(e)
                     pass
 
             if matched_fields == len(filter_payload):
@@ -594,11 +675,11 @@ def get_list_id(space_name, folder_name, list_name):
     spaces = Spaces()
     spaceid = spaces[space_name]
 
-    if folder_name != "" or folder_name is not None:
+    if not folder_name:
+        return SpaceLists(spaceid)[list_name]
+    else:
         folderid = Folders(spaceid)[folder_name]
         return FolderLists(folderid)[list_name]
-    else:
-        return SpaceLists(spaceid)[list_name]
 
 
 def get_list_tasks(space_name, folder_name, list_name, include_closed=True):
@@ -609,13 +690,14 @@ def get_list_tasks(space_name, folder_name, list_name, include_closed=True):
     spaces = Spaces()
     spaceid = spaces[space_name]
 
-    if folder_name != "" or folder_name is not None:
-        folderid = Folders(spaceid)[folder_name]
-        list_id = FolderLists(folderid)[list_name]
+    if not folder_name:
+        return SpaceLists(spaceid)[list_name]
     else:
-        list_id = SpaceLists(spaceid)[list_name]
+        folderid = Folders(spaceid)[folder_name]
+        return FolderLists(folderid)[list_name]
 
     tasks = Tasks(list_id, include_closed)
+    
     return tasks
 
 
