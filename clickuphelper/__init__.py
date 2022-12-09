@@ -557,7 +557,7 @@ class Tasks:
                     comparator = filt[2]
 
 
-                print(f"name {fieldname}, value {filtvalue}, comparator {comparator}")
+                #print(f"name {fieldname}, value {filtvalue}, comparator {comparator}")
                 try:
                     task_value = self[task_id].get_field(fieldname)
                 except MissingCustomFieldValue:
