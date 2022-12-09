@@ -2,6 +2,7 @@ import requests
 import json
 import datetime
 import os
+import operator
 
 if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is None:
     cu_key = os.environ["CLICKUP_API_KEY"]
@@ -41,10 +42,10 @@ class MissingCustomFieldValue(KeyError):
 class Task:  # Technically Clickup Task View
     def __init__(
         self,
-        task_id, # : str | dict,  # add type annotation back whenever we get 3.10
+        task_id,  # : str | dict,  # add type annotation back whenever we get 3.10
         verbose=False,
         include_subtasks=False,
-        except_missing_cf_value=True
+        except_missing_cf_value=True,
     ):
         """
         Initialize container class for working with a clickup task from a task_id (str) or
@@ -76,13 +77,15 @@ class Task:  # Technically Clickup Task View
         elif isinstance(task_id, dict):
 
             if self.include_subtasks:
-                raise NotImplementedError("Subtasks not implemented for initialization from a task object")
+                raise NotImplementedError(
+                    "Subtasks not implemented for initialization from a task object"
+                )
                 # The point of dict initialization is to allow the creation of these task objects
                 # in the class Tasks hitting the all-tasks in a folder endpoint.  These would have to know
                 # to include subtasks or not at that level.  We could fall back and use the task_id
                 # to query the single endpoint, but that defeats the performance point of using the paginated
                 # endpoint.
-            task = task_id # use the task directly.
+            task = task_id  # use the task directly.
 
         # Store raw task response
         self.task = task
@@ -184,7 +187,9 @@ class Task:  # Technically Clickup Task View
             if self.except_missing_cf_value:
                 if self.verbose:
                     print_field("ERROR: ")
-                raise MissingCustomFieldValue(f"task {self.id} missing custom field value {field['name']}") from e
+                raise MissingCustomFieldValue(
+                    f"task {self.id} missing custom field value {field['name']}"
+                ) from e
             else:
                 if self.verbose:
                     print_field("ERROR: ")
@@ -252,7 +257,7 @@ class Task:  # Technically Clickup Task View
                 print(obj["type_config"]["options"])
                 for item in obj["type_config"]["options"]:
                     lookup[item["name"]] = item["orderindex"]
-                #print(lookup)
+                # print(lookup)
                 try:
                     payload["value"] = lookup[value]
                 except KeyError:
@@ -265,10 +270,10 @@ class Task:  # Technically Clickup Task View
         if reinitialize:
             self.reinitialize(self.id)
 
-        #print(response.text)
+        # print(response.text)
         return response
 
-    def post_status(self, status, reinitialize = True):
+    def post_status(self, status, reinitialize=True):
 
         url = "https://api.clickup.com/api/v2/task/" + self.id
 
@@ -487,7 +492,7 @@ class Tasks:
             # count = len(data["tasks"])
             # print(f" adding {count}")
 
-            #print(json.dumps(data["tasks"],indent=2))
+            # print(json.dumps(data["tasks"],indent=2))
             for task in data["tasks"]:
                 self.tasks[task["id"]] = Task(task)
 
@@ -495,19 +500,18 @@ class Tasks:
             self.task_ids += [i["id"] for i in data["tasks"]]
             query["page"] += 1
 
-
     def __getitem__(self, task_id):
         try:
             return self.tasks[task_id]
         except KeyError as e:
             msg = f"Task ids in this folder are {self.task_ids}"
-        #return self.get_id(name)
+        # return self.get_id(name)
 
     def __iter__(self):
         return iter(self.tasks)
 
     def get_field(self, fields):
-        if isinstance(fields,str):
+        if isinstance(fields, str):
             fields = [fields]
 
         ret = {}
@@ -515,18 +519,64 @@ class Tasks:
             task_fields = {}
             found_fields = 0
             for field in fields:
-                try: 
+                try:
                     value = self[task_id].get_field(field)
                     found_fields += 1
                 except MissingCustomFieldValue:
                     value = None
                     pass
-                print(f"{field} {task_id} {value}")
-                task_fields[field]={task_id : value}
+                # print(f"{field} {task_id} {value}")
+                task_fields[field] = value
             if found_fields:
                 # Only add task_id to return if at least one of the fields requested returns
                 ret[task_id] = task_fields
         return ret
+
+    def filter_field(self, filter_payload):
+        """
+        Apply filters via a list of tuples of the format
+        (field_name, field_value, comparator).  Use
+        comparison operators in comparison module such asimport operator, operator.lt).
+        If no comparator is provided, this will default to using
+        operator.eq(fieldname, field_value).
+        """
+
+        if isinstance(filter_payload, tuple):
+            filter_payload = [filter_payload]
+
+        ret = {}
+        for task_id in self:
+            task_fields = {}
+            matched_fields = 0
+            for filt in filter_payload:
+                fieldname = filt[0]
+                filtvalue = filt[1]
+                if len(filt) < 3:
+                    comparator = operator.eq
+                else:
+                    comparator = filt[2]
+
+
+                print(f"name {fieldname}, value {filtvalue}, comparator {comparator}")
+                try:
+                    task_value = self[task_id].get_field(fieldname)
+                except MissingCustomFieldValue:
+                    task_value = None
+                    pass
+
+                try:
+                    if comparator(task_value, filtvalue):
+                        matched_fields += 1
+                        task_fields[fieldname] = task_value
+                except TypeError as e:
+                    print(e)
+                    pass
+
+            if matched_fields == len(filter_payload):
+                # Only add task to return if we successfully match all filters.
+                ret[task_id] = task_fields
+        return ret
+
 
 def get_space_id(space_name):
     raise NotImplementedError
@@ -576,6 +626,7 @@ def get_list_task_ids(space_name, folder_name, list_name, include_closed=True):
     """
     tasks = get_list_tasks(space_name, folder_name, list_name, include_closed)
     return tasks.task_ids
+
 
 def get_list(space_name, folder_name, list_name):
 
