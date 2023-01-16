@@ -42,13 +42,14 @@ class MissingCustomFieldValue(KeyError):
 class Task:  # Technically Clickup Task View
     def __init__(
         self,
-        task_id,  # : str | dict,  # add type annotation back whenever we get 3.10
+        task_id,  # : str | dict,  # add annotation back in py 3.10
         verbose=False,
         include_subtasks=False,
         except_missing_cf_value=True,
     ):
         """
-        Initialize container class for working with a clickup task from a task_id (str) or
+        Initialize container class for working with a
+        clickup task from a task_id (str) or
         a clickup task object (dict).
         """
         self.verbose = verbose
@@ -60,7 +61,7 @@ class Task:  # Technically Clickup Task View
 
         self.id = task_id
 
-        if isinstance(task_id, str):
+        if isinstance(task_id, str):  # str or int
             # Query for task object
             if self.include_subtasks:
                 query = {
@@ -86,6 +87,8 @@ class Task:  # Technically Clickup Task View
                 # to query the single endpoint, but that defeats the performance point of using the paginated
                 # endpoint.
             task = task_id  # use the task directly.
+        else:
+            raise NotImplementedError("task_id must be str or dict")
 
         # Store raw task response
         self.task = task
@@ -300,10 +303,10 @@ def post_task(list_id, task_name, task_description="", status="Open", custom_fie
     # Need to retrieve information about list in question
     postlist = List(list_id)
 
-    #query = {
+    # query = {
     #    "custom_task_ids": "true",
     #     "team_id": team_id
-    #}
+    # }
 
     """
     Convert format of custom_fields dict from {field_name : value} to {field_uuid: value}
@@ -312,14 +315,16 @@ def post_task(list_id, task_name, task_description="", status="Open", custom_fie
     cf_uuid_values_list = []
     for fname, fvalue in custom_fields.items():
         if fname not in postlist.field_lookup.keys():
-            raise KeyError(f"Custom field {fname} not found in {postlist.field_lookup.keys()}")
+            raise KeyError(
+                f"Custom field {fname} not found in {postlist.field_lookup.keys()}"
+            )
 
         # TODO: type checks on field_obj['type']
-        
+
         # Dropdowns need more QoL to accept either integer value that clickup uses,
         # or their human readable named values.
         field_obj = postlist.field_lookup[fname]
-        if field_obj['type'] == 'drop_down':
+        if field_obj["type"] == "drop_down":
             try:
                 int(fvalue)
             except ValueError:
@@ -332,8 +337,8 @@ def post_task(list_id, task_name, task_description="", status="Open", custom_fie
                 fvalue = lookup[fvalue]
         # Assemble cf dict
         uuid_value = {}
-        uuid_value['id'] = field_obj['id']
-        uuid_value['value'] = fvalue
+        uuid_value["id"] = field_obj["id"]
+        uuid_value["value"] = fvalue
         # Append
         cf_uuid_values_list.append(uuid_value)
 
@@ -357,9 +362,10 @@ def post_task(list_id, task_name, task_description="", status="Open", custom_fie
     }
     print(json.dumps(payload, indent=2))
 
-    response = requests.post(url, json=payload, headers=headers) #, params=query)
+    response = requests.post(url, json=payload, headers=headers)  # , params=query)
     response.raise_for_status()
     return response
+
 
 class List:
     def __init__(self, list_id):
@@ -368,9 +374,9 @@ class List:
         data = response.json()
         url = "https://api.clickup.com/api/v2/list/" + list_id + "/field"
         response = requests.get(url, headers=headers)
-        self.fields = response.json()['fields']
+        self.fields = response.json()["fields"]
 
-        self.field_lookup = {cf['name']:cf for cf in self.fields}
+        self.field_lookup = {cf["name"]: cf for cf in self.fields}
 
         self.data = data
         self.id = data["id"]
@@ -378,7 +384,9 @@ class List:
         self.statuses = data["statuses"]
         self.status_names = [status["status"] for status in self.statuses]
 
-    def get_field_names(self, ):
+    def get_field_names(
+        self,
+    ):
         return self.field_lookup.keys()
 
     def get_field(self, field_name):
@@ -523,6 +531,7 @@ class FolderLists:
 
         data = response.json()
         self.data = data
+
         self.lists = data["lists"]
 
         self.list_names = [i["name"] for i in self.lists]
@@ -585,6 +594,7 @@ class Tasks:
             return self.tasks[task_id]
         except KeyError as e:
             msg = f"Task ids in this folder are {self.task_ids}"
+            raise KeyError(msg) from e
         # return self.get_id(name)
 
     def __iter__(self):
@@ -647,7 +657,7 @@ class Tasks:
                     if comparator(task_value, filtvalue):
                         matched_fields += 1
                         task_fields[fieldname] = task_value
-                except TypeError as e:
+                except TypeError:  # as e:
                     # This is probably type errors ebtween Nonetype and int (maybe some other types)
                     # but all of these (far as I'm aware) are not a match in the comparator.
                     # print(e)
@@ -688,16 +698,16 @@ def get_list_tasks(space_name, folder_name, list_name, include_closed=True):
     to none or empty string.
     """
     spaces = Spaces()
-    spaceid = spaces[space_name]
+    space_id = spaces[space_name]
 
     if not folder_name:
-        return SpaceLists(spaceid)[list_name]
+        list_id = SpaceLists(space_id)[list_name]
     else:
-        folderid = Folders(spaceid)[folder_name]
-        return FolderLists(folderid)[list_name]
+        folder_id = Folders(space_id)[folder_name]
+        list_id = FolderLists(folder_id)[list_name]
 
     tasks = Tasks(list_id, include_closed)
-    
+
     return tasks
 
 
