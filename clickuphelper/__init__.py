@@ -242,7 +242,7 @@ class Task:  # Technically Clickup Task View
 
         return data
 
-    def post_custom_field(self, field, value, reinitialize=True):
+    def post_custom_field(self, field, value, reinitialize=True, value_options = None, use_time=False):
 
         # print(f"field {field}, value {value}")
         fid = self.get_field_id(field)
@@ -250,6 +250,17 @@ class Task:  # Technically Clickup Task View
         url = f"https://api.clickup.com/api/v2/task/{self.id}/field/{fid}"
 
         payload = {"value": value}
+
+        if value_options is not None:
+            payload["value_options"] = value_options
+            ## https://clickup.com/api/developer-portal/customfields/
+            ## currently just for time fields
+
+        ## This should only be set if the field is type date
+        if ftype == "date":
+            if use_time:
+                payload["value_options"] = { "time" : True }
+        
         if ftype == "drop_down":
             try:
                 int(value)
