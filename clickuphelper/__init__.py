@@ -268,7 +268,8 @@ class Task:  # Technically Clickup Task View
                 # Need to translate string to underlying clickup integer lookup
                 obj = self.get_field_obj(field)
                 lookup = {}
-                print(obj["type_config"]["options"])
+                # This now works reliably and we don't need to print
+                # print(obj["type_config"]["options"])
                 for item in obj["type_config"]["options"]:
                     lookup[item["name"]] = item["orderindex"]
                 # print(lookup)
