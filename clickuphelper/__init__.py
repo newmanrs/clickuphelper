@@ -38,7 +38,6 @@ class MissingCustomField(KeyError):
 class MissingCustomFieldValue(KeyError):
     pass
 
-
 class Task:  # Technically Clickup Task View
     def __init__(
         self,
@@ -46,6 +45,7 @@ class Task:  # Technically Clickup Task View
         verbose=False,
         include_subtasks=False,
         except_missing_cf_value=True,
+        raw_task=None
     ):
         """
         Initialize container class for working with a
@@ -55,13 +55,15 @@ class Task:  # Technically Clickup Task View
         self.verbose = verbose
         self.include_subtasks = include_subtasks
         self.except_missing_cf_value = except_missing_cf_value
+        self.raw_task = raw_task
         self.reinitialize(task_id)
 
     def reinitialize(self, task_id):
-
         self.id = task_id
 
-        if isinstance(task_id, str):  # str or int
+        if self.raw_task is not None:
+            task = self.raw_task
+        elif isinstance(task_id, str):  # str or int
             # Query for task object
             if self.include_subtasks:
                 query = {
@@ -76,7 +78,6 @@ class Task:  # Technically Clickup Task View
             q = requests.get(url, headers=headers, params=query)
             task = q.json()
         elif isinstance(task_id, dict):
-
             if self.include_subtasks:
                 raise NotImplementedError(
                     "Subtasks not implemented for initialization from a task object"
