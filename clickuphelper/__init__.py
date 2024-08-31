@@ -168,6 +168,14 @@ class Task:  # Technically Clickup Task View
                 """
                 index = field["value"]
                 v = field["type_config"]["options"][index]["name"]
+            elif t == "labels":
+                v = []
+                value_ids = field["value"]
+                options = field["type_config"]["options"]
+                id_to_label = {option["id"]: option["label"] for option in options}
+                for value_id in value_ids:
+                    if value_id in id_to_label:
+                        v.append(id_to_label[value_id])
             elif t == "url":
                 v = field["value"]
             elif t == "text":
@@ -307,6 +315,22 @@ class Task:  # Technically Clickup Task View
             self.reinitialize(self.id)
 
         return data
+
+    def add_tags(self, tag_ids: List[str]) -> dict:
+        """
+        Add tags to the task.
+
+        :param tag_ids: A list of tag IDs to add to the task
+        :return: A dictionary containing the task ID and the list of added tag IDs
+        """
+        for tag_id in tag_ids:
+            url = f"https://api.clickup.com/api/v2/task/{self.id}/tag/{tag_id}"
+            response = requests.post(url, headers=headers)
+            if response.status_code != 200:
+                raise Exception(f"Failed to add tag {tag_id}. Status code: {response.status_code}")
+
+        self.reinitialize(self.id)  # Refresh the task data
+        return {"task_id": self.id, "tag_ids": tag_ids}
 
 
 def post_task(list_id, task_name, task_description="", status="Open", custom_fields={}):
