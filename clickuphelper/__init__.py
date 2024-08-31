@@ -316,7 +316,8 @@ class Task:  # Technically Clickup Task View
 
         return data
 
-    def add_tags(self, tag_ids: List[str]) -> dict:
+    #def add_tags(self, tag_ids: List[str]) -> dict:
+    def add_tags(self, tag_ids):
         """
         Add tags to the task.
 

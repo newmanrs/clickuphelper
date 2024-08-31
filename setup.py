@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="clickuphelper",
-    version="0.3.0",
+    version="0.3.1",
     py_modules=["clickuphelper"],
     packages=["clickuphelper"],
     install_requires=["requests", "click"],
