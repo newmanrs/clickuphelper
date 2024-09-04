@@ -377,6 +377,29 @@ class Task:  # Technically Clickup Task View
 
             return response.json()
 
+    def attach_file_to_custom_field(self, custom_field_name, file_path):
+        """
+        Attach a file to a specific custom field in the task.
+
+        :param custom_field_name: Name of the custom field to attach the file to
+        :param file_path: Path to the file to be attached
+        :return: JSON response from the Clickup API
+        """
+        # Look up the custom field ID
+        try:
+            custom_field = self.custom_fields[custom_field_name]
+            custom_field_id = custom_field['id']
+        except KeyError:
+            raise ValueError(f"Custom field '{custom_field_name}' not found in task {self.id}")
+
+        # Check if the custom field is of type 'attachment'
+        if custom_field['type'] != 'attachment':
+            raise ValueError(f"Custom field '{custom_field_name}' is not of type 'attachment'")
+
+        # Use the add_attachment function with the parent_field_id
+        return self.add_attachment(file_path, parent_field_id=custom_field_id)
+
+
 def post_task(list_id, task_name, task_description="", status="Open", custom_fields={}):
 
     url = f"https://api.clickup.com/api/v2/list/{list_id}/task"
