@@ -334,11 +334,12 @@ class Task:  # Technically Clickup Task View
         return {"task_id": self.id, "tag_ids": tag_ids}
 
 
-    def add_attachment(self, file_path):
+    def add_attachment(self, file_path, parent_field_id = None):
             """
             Add an attachment to the task.
 
             :param file_path: Path to the file to be attached
+            :param parent_field_id: this is for posting to a custom field of a file task
             :return: JSON response from the Clickup API
             """
             url = f"https://api.clickup.com/api/v2/task/{self.id}/attachment"
@@ -357,6 +358,10 @@ class Task:  # Technically Clickup Task View
                 "custom_task_ids": "true",
                 "team_id": team_id  # Assuming team_id is available in the module scope
             }
+
+            if parent_field_id:
+                params['hidden'] = True
+                params['parent'] = parent_field_id
 
             # Make the API request
             response = requests.post(url, headers=headers, params=params, files=files)
