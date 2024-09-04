@@ -179,3 +179,14 @@ def clickuplist(space_name, folder_name, list_name, display):
 @click.command()
 def clickuptime():
     click.echo(json.dumps(clickuphelper.time_tracking(), indent=2))
+
+@task.command()
+@click.pass_context
+@click.argument('file_path', type=click.Path(exists=True))
+def add_attachment(ctx, file_path):
+    """
+    Add an attachment to the task
+    """
+    task = ctx.obj
+    response = task.add_attachment(file_path)
+    click.echo(json.dumps(response, indent=2))

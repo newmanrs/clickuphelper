@@ -334,6 +334,44 @@ class Task:  # Technically Clickup Task View
         return {"task_id": self.id, "tag_ids": tag_ids}
 
 
+    def add_attachment(self, file_path):
+            """
+            Add an attachment to the task.
+
+            :param file_path: Path to the file to be attached
+            :return: JSON response from the Clickup API
+            """
+            url = f"https://api.clickup.com/api/v2/task/{self.id}/attachment"
+
+            # Ensure the file exists
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"File not found: {file_path}")
+
+            # Prepare the file for upload
+            files = {
+                'attachment': (os.path.basename(file_path), open(file_path, 'rb'))
+            }
+
+            # Prepare the parameters
+            params = {
+                "custom_task_ids": "true",
+                "team_id": team_id  # Assuming team_id is available in the module scope
+            }
+
+            # Make the API request
+            response = requests.post(url, headers=headers, params=params, files=files)
+
+            # Check for successful upload
+            if response.status_code == 200:
+                print(f"File '{os.path.basename(file_path)}' uploaded successfully.")
+            else:
+                print(f"Failed to upload file. Status code: {response.status_code}")
+
+            # Close the file
+            files['attachment'][1].close()
+
+            return response.json()
+
 def post_task(list_id, task_name, task_description="", status="Open", custom_fields={}):
 
     url = f"https://api.clickup.com/api/v2/list/{list_id}/task"
