@@ -106,6 +106,9 @@ class Task:  # Technically Clickup Task View
         self.updated = ts_ms_to_dt(task["date_updated"])
         self.status = task["status"]["status"]
 
+        # Add linked_tasks attribute
+        self.linked_tasks = task.get("linked_tasks", [])
+
         # Create dictionary of custom field names to custom field items
         # Hope that custom field names are unique - may cause bugs
         # self.custom_fields = defaultdict(list)
