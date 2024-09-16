@@ -56,6 +56,11 @@ class Task:  # Technically Clickup Task View
         self.include_subtasks = include_subtasks
         self.except_missing_cf_value = except_missing_cf_value
         self.raw_task = raw_task
+
+        # Remove '#' character from task_id if it's a string
+        if isinstance(task_id, str):
+            task_id = task_id.replace('#', '')
+
         self.reinitialize(task_id)
 
     def reinitialize(self, task_id):
