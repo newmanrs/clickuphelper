@@ -1,4 +1,7 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
 
 setup(
     name="clickuphelper",
@@ -14,4 +17,16 @@ setup(
             "clickuptime=clickuphelper.cli:clickuptime",
         ],
     },
+    author="Richmond Newman",
+    author_email="newmanrs@gmail.com",
+    description="A CLI tool for interacting with ClickUp",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/newmanrs/clickuphelper",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
+    python_requires=">=3.6",
 )
