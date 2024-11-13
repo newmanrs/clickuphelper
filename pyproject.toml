@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clickuphelper"
+version = "0.3.6"
+description = "Python classes, cli, and tooling to interact with Clickup"
+readme = "README.md"
+authors = [{ name = "Robert Newman", email = "newmanrs@example.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
+keywords = ["clickup", "api", "cli", "task management"]
+dependencies = [
+    "click",
+    "requests",
+]
+requires-python = ">=3.7"
+
+[project.urls]
+Homepage = "https://github.com/newmanrs/clickuphelper"
+"Bug Tracker" = "https://github.com/newmanrs/clickuphelper/issues"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+clickuptask = "clickuphelper.cli:clickuptask"
+clickuplist = "clickuphelper.cli:clickuplist"
+clickuptree = "clickuphelper.cli:clickuptree"

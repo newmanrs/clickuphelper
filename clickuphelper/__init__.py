@@ -259,9 +259,8 @@ class Task:  # Technically Clickup Task View
 
         return data
 
-    def post_custom_field(self, field, value, reinitialize=True, value_options = None, use_time=False):
-
-        # print(f"field {field}, value {value}")
+    def post_custom_field(self, field, value, reinitialize=True, value_options=None, use_time=False):
+        # Get field ID and type
         fid = self.get_field_id(field)
         ftype = self.get_field_type(field)
         url = f"https://api.clickup.com/api/v2/task/{self.id}/field/{fid}"
@@ -270,39 +269,52 @@ class Task:  # Technically Clickup Task View
 
         if value_options is not None:
             payload["value_options"] = value_options
-            ## https://clickup.com/api/developer-portal/customfields/
-            ## currently just for time fields
 
-        ## This should only be set if the field is type date
+        # Handle different field types
         if ftype == "date":
             if use_time:
-                payload["value_options"] = { "time" : True }
+                payload["value_options"] = {"time": True}
         
-        if ftype == "drop_down":
+        elif ftype == "drop_down":
             try:
                 int(value)
             except ValueError:
-                # Need to translate string to underlying clickup integer lookup
+                # Translate string to clickup integer lookup
                 obj = self.get_field_obj(field)
                 lookup = {}
-                # This now works reliably and we don't need to print
-                # print(obj["type_config"]["options"])
                 for item in obj["type_config"]["options"]:
                     lookup[item["name"]] = item["orderindex"]
-                # print(lookup)
                 try:
                     payload["value"] = lookup[value]
                 except KeyError:
-                    pass  # maybe unwise.
+                    pass
+
+        elif ftype == "labels":
+            # Handle labels field type
+            obj = self.get_field_obj(field)
+            label_lookup = {
+                option["label"]: option["id"] 
+                for option in obj["type_config"]["options"]
+            }
+            
+            # Convert single string to list for consistent handling
+            if isinstance(value, str):
+                value = [value]
+            
+            # Translate label names to IDs
+            try:
+                label_ids = [label_lookup[label_name] for label_name in value]
+                payload["value"] = label_ids
+            except KeyError as e:
+                available_labels = list(label_lookup.keys())
+                raise ValueError(f"Invalid label name. Available labels are: {available_labels}") from e
 
         query = {}
-
         response = requests.post(url, json=payload, headers=headers, params=query)
 
         if reinitialize:
             self.reinitialize(self.id)
 
-        # print(response.text)
         return response
 
     def post_status(self, status, reinitialize=True):

@@ -1,33 +1,32 @@
-.phony: install uninstall test clean lint
+.PHONY: clean build deploy test venv
 
-install:
-	@echo 'Installing'
-	@pip3 install ./
-
-uninstall:
-	@echo 'Uninstalling'
-	pip3 uninstall clickuphelper
-
-test:
-	@echo 'Testing'
-	python3 -m unittest discover -v
+venv:
+	python -m venv venv
+	. venv/bin/activate && pip install --upgrade pip
+	. venv/bin/activate && pip install build twine pytest wheel
+	. venv/bin/activate && pip install -e ".[dev]"
 
 clean:
-	@echo 'Clean'
-	@echo 'Cleaning __pycache__'
-	find . -regex '^.*\(__pycache__\|\.py[co]\)' -delete
-	@if [ -d "build" ]; then \
-		echo 'Removing build'; \
-		rm -r build; \
-	fi
-	@if [ -d *.egg-info ]; then \
-		echo 'Removing *.egg-info'; \
-		rm -r *.egg-info; \
-	fi
+	rm -rf dist/ build/ *.egg-info/
+	find . -type d -name __pycache__ -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
 
-lint:
-	@echo "Lint"
-	black; \
-	@flake8 \
-		--exclude=build, \
-		--ignore=E126,E123,E741
+build: clean
+	. venv/bin/activate && python -m build
+
+test:
+	. venv/bin/activate && python -m pytest tests/
+
+# Deploy to test PyPI
+deploy-test: build
+	. venv/bin/activate && python -m twine upload --repository testpypi dist/*
+
+# Deploy to production PyPI
+deploy: build
+	. venv/bin/activate && python -m twine upload dist/*
+
+# Install development dependencies (if you already have a venv activated)
+dev-setup:
+	pip install --upgrade pip
+	pip install build twine pytest wheel
+	pip install -e ".[dev]"
