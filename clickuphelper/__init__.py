@@ -17,7 +17,7 @@ def ts_ms_to_dt(ts, except_if_year_1970=True):
     if isinstance(ts, str):
         ts = float(ts)
 
-    dt = datetime.datetime.utcfromtimestamp(ts / 1000)
+    dt = datetime.datetime.fromtimestamp(ts / 1000, datetime.UTC)
 
     if except_if_year_1970 and dt.year == 1970:
         msg = (
@@ -420,7 +420,7 @@ class Task:  # Technically Clickup Task View
         return self.add_attachment(file_path, parent_field_id=custom_field_id)
 
 
-def post_task(list_id, task_name, task_description="", status="Open", custom_fields={}):
+def post_task(list_id, task_name, task_description="", status="Open", custom_fields={}, debug=False):
 
     url = f"https://api.clickup.com/api/v2/list/{list_id}/task"
 
@@ -484,10 +484,22 @@ def post_task(list_id, task_name, task_description="", status="Open", custom_fie
         # "check_required_custom_fields": True,
         "custom_fields": cf_uuid_values_list,
     }
-    print(json.dumps(payload, indent=2))
 
-    response = requests.post(url, json=payload, headers=headers)  # , params=query)
+    if debug:
+        print("Payload:")
+        print(json.dumps(payload, indent=2))
+
+    response = requests.post(url, json=payload, headers=headers)
+
+    if debug:
+        print("Response Status Code:", response.status_code)
+        try:
+            print("Response JSON:", response.json())
+        except json.JSONDecodeError:
+            print("Response Text:", response.text)
+
     response.raise_for_status()
+    
     return response
 
 
