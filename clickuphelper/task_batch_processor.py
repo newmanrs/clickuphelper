@@ -6,16 +6,20 @@ A utility script for processing multiple ClickUp tasks using custom algorithms.
 Imports clickuphelper as 'ch' and accepts a list of task IDs for batch processing.
 
 Usage:
-    python -m clickuphelper.task_batch_processor --task-ids "123456,789012,345678"
+    python -m clickuphelper.task_batch_processor --output calendar_events.json
 
     or
 
-    python task_batch_processor.py --task-ids "123456,789012,345678"
+    python task_batch_processor.py --output calendar_events.json
+
+    Options:
+    --output FILENAME    Save JSON output to specified file (default: print to console)
 """
 
 import sys
 import os
 import json
+import argparse
 
 # Add the parent directory to the path so we can import clickuphelper
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +31,11 @@ import clickuphelper as ch
 
 
 def main():
+    parser = argparse.ArgumentParser(description='ClickUp Helper Task Batch Processor')
+    parser.add_argument('--output', type=str, help='Output JSON filename (default: print to console)')
+
+    args = parser.parse_args()
+
     main_task_ids = [
         "868fqfdpt",
         "868fp8gwp",
@@ -122,6 +131,18 @@ def main():
         except (ch.MissingCustomField, ch.MissingCustomFieldValue, ValueError, TypeError):
             recording_date = ''
 
+        # Extract headshot URL from TASK_FILES custom field
+        headshot_url = ''
+        try:
+            task_files = main_task.get_field('TASK_FILES')
+            if task_files and isinstance(task_files, list) and len(task_files) > 0:
+                # Get the first attachment's url_w_query field
+                first_attachment = task_files[0]
+                if isinstance(first_attachment, dict) and 'url_w_query' in first_attachment:
+                    headshot_url = first_attachment['url_w_query']
+        except (ch.MissingCustomField, ch.MissingCustomFieldValue, KeyError, IndexError, TypeError):
+            headshot_url = ''
+
         # Find corresponding qf task ID for this main task
         qf_task_id = None
         for child_id, parent_id in task_parent_mapping.items():
@@ -146,14 +167,27 @@ def main():
             'guest_organization': guest_organization,
             'biography_url': task_url,
             'recording_date': recording_date,
-            'question_form': qf_task_url
+            'question_form': qf_task_url,
+            'headshot_url': headshot_url
         }
 
         calendar_events.append(event_data)
 
-    # Print the calendar events as JSON
-    print("\nCalendar Events Data:")
-    print(json.dumps(calendar_events, indent=2))
+    # Output the calendar events as JSON
+    output_data = {"events": calendar_events}
+
+    if args.output:
+        try:
+            with open(args.output, 'w') as f:
+                json.dump(output_data, f, indent=2)
+            print(f"Calendar events data saved to: {args.output}")
+        except Exception as e:
+            print(f"Error writing to file {args.output}: {e}")
+            print("Falling back to console output:")
+            print(json.dumps(output_data, indent=2))
+    else:
+        print("\nCalendar Events Data:")
+        print(json.dumps(output_data, indent=2))
 
 if __name__ == "__main__":
     main()
