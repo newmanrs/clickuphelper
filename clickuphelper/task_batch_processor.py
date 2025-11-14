@@ -20,6 +20,7 @@ import sys
 import os
 import json
 import argparse
+from datetime import datetime, timezone
 
 # Add the parent directory to the path so we can import clickuphelper
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -143,6 +144,15 @@ def main():
         except (ch.MissingCustomField, ch.MissingCustomFieldValue, KeyError, IndexError, TypeError):
             headshot_url = ''
 
+        # Extract task description
+        description = ''
+        try:
+            description = main_task.task['description']
+            if description is None:
+                description = ''
+        except (KeyError, TypeError):
+            description = ''
+
         # Find corresponding qf task ID for this main task
         qf_task_id = None
         for child_id, parent_id in task_parent_mapping.items():
@@ -160,21 +170,27 @@ def main():
                 except (ch.MissingCustomField, ch.MissingCustomFieldValue):
                     qf_task_url = ''
 
-        # Create calendar event data
+        # Create calendar event data in the new format
         event_data = {
-            'main_task_id': main_task_id,
-            'guest': guest,
-            'guest_organization': guest_organization,
-            'biography_url': task_url,
-            'recording_date': recording_date,
-            'question_form': qf_task_url,
-            'headshot_url': headshot_url
+            'name': guest,
+            'image': headshot_url,
+            'role': '',  # Add ROLE field if needed
+            'organization': guest_organization,
+            'bio': description if description else '',
+            'fullBio': description if description else '',
+            'linkedin': task_url,
+            'questionForm': qf_task_url,
+            'hasLongBio': len(description) > 100 if description else False,
+            'recording_date': recording_date
         }
 
         calendar_events.append(event_data)
 
     # Output the calendar events as JSON
-    output_data = {"events": calendar_events}
+    output_data = {
+        "calendarUploadDate": datetime.now(timezone.utc).isoformat(),
+        "events": calendar_events
+    }
 
     if args.output:
         try:
