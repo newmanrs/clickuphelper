@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="clickuphelper",
-    version="0.4.0",
+    version="0.5.0",
     py_modules=["clickuphelper"],
     packages=["clickuphelper"],
     install_requires=["requests", "click"],
