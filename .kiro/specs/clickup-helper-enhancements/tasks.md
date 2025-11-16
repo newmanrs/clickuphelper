@@ -124,3 +124,20 @@
   - Include error handling examples
   - Add setup/configuration section
   - _Requirements: All requirements 1-16_
+
+- [ ] 12. Create realistic integration tests with production data
+  - Create integration test script that connects to real ClickUp workspace
+  - Test finding tasks with specific tag (e.g., "guest:jessica-smith")
+  - Test filtering by custom field value (e.g., LPT_TASK_TYPE == 'LPT_CREATE_THUMBNAIL')
+  - Test combining tag filter and custom field filter together
+  - Test with multiple filter operators (EQUALS, CONTAINS, etc.)
+  - Verify filter results return expected tasks
+  - Test error handling for missing fields and invalid values
+  - Create example script showing real-world usage patterns
+  - Document how to set up environment variables for testing
+  - Include examples of common query patterns:
+    - Find tasks by tag and custom field combination
+    - Find tasks with specific status and custom field values
+    - Find tasks with subtasks matching certain criteria
+    - Count tasks matching complex filters
+  - _Requirements: 5.1, 5.2, 7.1, 7.2, 10.1, 10.2_
