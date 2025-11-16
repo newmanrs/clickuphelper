@@ -1620,3 +1620,368 @@ def time_tracking():
     # print(durations)
     return sum(durations)
     return durations
+
+
+# Module version
+__version__ = "0.4.0"
+
+
+def get_capabilities():
+    """
+    Return structured dictionary of module capabilities.
+    
+    Returns:
+        Dictionary with structure:
+        {
+            'version': str,
+            'classes': {
+                'ClassName': {
+                    'description': str,
+                    'key_methods': [str, ...],
+                    'use_cases': [str, ...]
+                },
+                ...
+            },
+            'functions': {
+                'function_name': {
+                    'description': str,
+                    'parameters': [str, ...],
+                    'returns': str
+                },
+                ...
+            },
+            'filtering': {
+                'operators': [str, ...],
+                'custom_field_types': [str, ...]
+            }
+        }
+    """
+    return {
+        'version': __version__,
+        'classes': {
+            'Task': {
+                'description': 'Represents a single ClickUp task with methods to access and modify task data',
+                'key_methods': [
+                    'get_field(name) - Get custom field value by name',
+                    'get_field_names() - Get all custom field names',
+                    'post_comment(comment) - Post a comment to the task',
+                    'post_custom_field(field, value) - Update a custom field value',
+                    'post_status(status) - Update task status',
+                    'add_tags(tag_ids) - Add tags to the task',
+                    'add_attachment(file_path) - Add file attachment to the task',
+                    'attach_file_to_custom_field(field_name, file_path) - Attach file to custom field',
+                    'get_filtered_subtasks(filters) - Get subtasks matching custom field filters'
+                ],
+                'use_cases': [
+                    'Access task custom fields and metadata',
+                    'Update task status, fields, and comments',
+                    'Manage task attachments and tags',
+                    'Filter subtasks by custom field criteria'
+                ]
+            },
+            'Tasks': {
+                'description': 'Represents a collection of tasks from a list with filtering and bulk operations',
+                'key_methods': [
+                    'get_count() - Get count of tasks in the list',
+                    'filter_by_tag(tag_names) - Filter tasks by tag name(s) with OR logic',
+                    'filter_by_statuses(status_names) - Filter tasks by status with OR logic',
+                    'filter_by_custom_fields(filters) - Filter tasks by custom fields with AND logic',
+                    'get_tasks_with_subtasks(filters, tag_filter, status_filter) - Get filtered tasks with all subtasks',
+                    'get_field(fields) - Get custom field values for all tasks',
+                    'filter_field(filter_payload) - Filter tasks using comparison operators'
+                ],
+                'use_cases': [
+                    'Retrieve all tasks from a list',
+                    'Filter tasks by tags, status, or custom fields',
+                    'Get task counts and statistics',
+                    'Retrieve tasks with their complete subtask hierarchies'
+                ]
+            },
+            'List': {
+                'description': 'Represents a ClickUp list with metadata and custom field schema information',
+                'key_methods': [
+                    'get_field_names() - Get all custom field names defined in the list',
+                    'get_field(field_name) - Get custom field schema by name'
+                ],
+                'use_cases': [
+                    'Access list metadata and configuration',
+                    'Discover custom field schemas',
+                    'Get available statuses for the list'
+                ]
+            },
+            'Teams': {
+                'description': 'Discover and access all workspaces/teams available to the API key',
+                'key_methods': [
+                    'get_team_ids() - Get list of team IDs',
+                    'get_team_names() - Get list of team names',
+                    'get_team_by_id(team_id) - Get team metadata by ID',
+                    'get_team_by_name(team_name) - Get team metadata by name',
+                    '__getitem__(name) - Index by team name to get team ID',
+                    '__iter__() - Iterate over teams'
+                ],
+                'use_cases': [
+                    'Discover available workspaces',
+                    'Get team IDs for API operations',
+                    'Iterate over all accessible teams'
+                ]
+            },
+            'Spaces': {
+                'description': 'Access spaces within a workspace/team',
+                'key_methods': [
+                    'get_names() - Get list of space names',
+                    'get_id(name) - Get space ID by name',
+                    '__getitem__(name) - Index by space name to get space ID',
+                    '__iter__() - Iterate over spaces'
+                ],
+                'use_cases': [
+                    'Discover spaces in a workspace',
+                    'Get space IDs for further operations',
+                    'Navigate workspace hierarchy'
+                ]
+            },
+            'Folders': {
+                'description': 'Access folders within a space',
+                'key_methods': [
+                    'get_names() - Get list of folder names',
+                    'get_id(name) - Get folder ID by name',
+                    '__getitem__(name) - Index by folder name to get folder ID',
+                    '__iter__() - Iterate over folders'
+                ],
+                'use_cases': [
+                    'Discover folders in a space',
+                    'Get folder IDs for list operations',
+                    'Navigate space hierarchy'
+                ]
+            },
+            'SpaceLists': {
+                'description': 'Access lists directly under a space (not in folders)',
+                'key_methods': [
+                    'get_names() - Get list of list names',
+                    'get_id(name) - Get list ID by name',
+                    '__getitem__(name) - Index by list name to get list ID',
+                    '__iter__() - Iterate over lists'
+                ],
+                'use_cases': [
+                    'Discover lists at space level',
+                    'Get list IDs for task operations'
+                ]
+            },
+            'FolderLists': {
+                'description': 'Access lists within a folder',
+                'key_methods': [
+                    'get_names() - Get list of list names',
+                    'get_id(name) - Get list ID by name',
+                    '__getitem__(name) - Index by list name to get list ID',
+                    '__iter__() - Iterate over lists'
+                ],
+                'use_cases': [
+                    'Discover lists in a folder',
+                    'Get list IDs for task operations'
+                ]
+            },
+            'FilterOperator': {
+                'description': 'Enum defining comparison operators for custom field filtering',
+                'key_methods': [
+                    'EQUALS, NOT_EQUALS - Equality comparisons',
+                    'GREATER_THAN, LESS_THAN, GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL - Numeric comparisons',
+                    'CONTAINS, STARTS_WITH, REGEX - Text pattern matching',
+                    'IN - Check if value is in a list',
+                    'IS_SET, IS_NOT_SET - Check if field has a value'
+                ],
+                'use_cases': [
+                    'Define filter criteria for custom fields',
+                    'Build complex task queries'
+                ]
+            },
+            'CustomFieldFilter': {
+                'description': 'Represents a single custom field filter with field name, operator, and value',
+                'key_methods': [
+                    '__init__(field_name, operator, value) - Create a filter'
+                ],
+                'use_cases': [
+                    'Build filter criteria for task queries',
+                    'Combine multiple filters with AND logic'
+                ]
+            }
+        },
+        'functions': {
+            'get_all_lists': {
+                'description': 'Get all lists in a workspace regardless of space/folder location',
+                'parameters': [
+                    'team_id (str) - The workspace/team ID',
+                    'archived (bool) - Whether to include archived lists (default False)'
+                ],
+                'returns': 'List of dictionaries with id, name, space_id, space_name, folder_id, folder_name'
+            },
+            'get_space_tags': {
+                'description': 'Get all tags defined in a space',
+                'parameters': [
+                    'space_id (str) - The space ID'
+                ],
+                'returns': 'List of tag dictionaries with name and tag (ID) keys'
+            },
+            'create_space_tag': {
+                'description': 'Create a new tag in a space',
+                'parameters': [
+                    'space_id (str) - The space ID',
+                    'tag_name (str) - Name for the new tag',
+                    'tag_fg_color (str, optional) - Foreground color hex code',
+                    'tag_bg_color (str, optional) - Background color hex code'
+                ],
+                'returns': 'Created tag dictionary from API response'
+            },
+            'get_list_id': {
+                'description': 'Get list ID from space, folder, and list names',
+                'parameters': [
+                    'space_name (str) - Name of the space',
+                    'folder_name (str) - Name of the folder (optional, use None or empty string for space-level lists)',
+                    'list_name (str) - Name of the list'
+                ],
+                'returns': 'List ID string'
+            },
+            'get_list_tasks': {
+                'description': 'Get all tasks in a list by space, folder, and list names',
+                'parameters': [
+                    'space_name (str) - Name of the space',
+                    'folder_name (str) - Name of the folder (optional)',
+                    'list_name (str) - Name of the list',
+                    'include_closed (bool) - Whether to include closed tasks (default True)'
+                ],
+                'returns': 'Tasks object containing all tasks in the list'
+            },
+            'get_task_count': {
+                'description': 'Get count of tasks in a list',
+                'parameters': [
+                    'list_id (str) - The list ID',
+                    'include_closed (bool) - Whether to include closed tasks (default False)'
+                ],
+                'returns': 'Integer count of tasks'
+            },
+            'post_task': {
+                'description': 'Create a new task in a list',
+                'parameters': [
+                    'list_id (str) - The list ID',
+                    'task_name (str) - Name of the task',
+                    'task_description (str) - Task description (default empty)',
+                    'status (str) - Initial status (default "Open")',
+                    'custom_fields (dict) - Dictionary of custom field names to values',
+                    'debug (bool) - Enable debug output (default False)'
+                ],
+                'returns': 'Response object from API'
+            },
+            'display_tree': {
+                'description': 'Print a hierarchical tree of workspace structure (spaces, folders, lists, optionally tasks)',
+                'parameters': [
+                    'display_tasks (bool) - Whether to include tasks (default True)',
+                    'display_subtasks (bool) - Whether to include subtasks (default False)'
+                ],
+                'returns': 'None (prints to stdout)'
+            }
+        },
+        'filtering': {
+            'description': 'Advanced filtering capabilities for tasks',
+            'operators': [
+                'EQUALS - Exact match',
+                'NOT_EQUALS - Not equal to',
+                'GREATER_THAN - Numeric greater than',
+                'GREATER_THAN_OR_EQUAL - Numeric greater than or equal',
+                'LESS_THAN - Numeric less than',
+                'LESS_THAN_OR_EQUAL - Numeric less than or equal',
+                'CONTAINS - Text substring match (case-insensitive)',
+                'STARTS_WITH - Text starts with (case-insensitive)',
+                'REGEX - Regular expression pattern match',
+                'IN - Value is in list (supports multiselect fields)',
+                'IS_SET - Field has a value',
+                'IS_NOT_SET - Field is empty or missing'
+            ],
+            'custom_field_types': [
+                'number - Numeric values (int or float)',
+                'text - Long text fields',
+                'short_text - Short text fields',
+                'url - URL fields',
+                'date - Date/datetime fields',
+                'drop_down - Single-select dropdown',
+                'labels - Multi-select labels/tags',
+                'tasks - Task relationship fields',
+                'attachment - File attachment fields'
+            ],
+            'filter_logic': [
+                'Multiple filters on Tasks.filter_by_custom_fields() use AND logic',
+                'Multiple tags in Tasks.filter_by_tag() use OR logic',
+                'Multiple statuses in Tasks.filter_by_statuses() use OR logic',
+                'Subtask filtering with Task.get_filtered_subtasks() uses AND logic'
+            ]
+        },
+        'exceptions': {
+            'MissingCustomField': 'Raised when a custom field name does not exist in the task schema',
+            'MissingCustomFieldValue': 'Raised when a custom field exists but has no value set'
+        },
+        'environment_variables': {
+            'CLICKUP_API_KEY': 'Required - Your ClickUp API key for authentication',
+            'CLICKUP_TEAM_ID': 'Optional - Default team/workspace ID (can be discovered via Teams class)'
+        }
+    }
+
+
+def print_capabilities():
+    """
+    Print human-readable summary of module capabilities to stdout.
+    Useful for quick reference and LLM inspection.
+    """
+    caps = get_capabilities()
+    
+    print("=" * 80)
+    print(f"ClickUp Helper Module - Version {caps['version']}")
+    print("=" * 80)
+    print()
+    
+    print("CLASSES")
+    print("-" * 80)
+    for class_name, class_info in caps['classes'].items():
+        print(f"\n{class_name}")
+        print(f"  Description: {class_info['description']}")
+        print(f"  Key Methods:")
+        for method in class_info['key_methods']:
+            print(f"    - {method}")
+        print(f"  Use Cases:")
+        for use_case in class_info['use_cases']:
+            print(f"    - {use_case}")
+    
+    print("\n" + "=" * 80)
+    print("FUNCTIONS")
+    print("-" * 80)
+    for func_name, func_info in caps['functions'].items():
+        print(f"\n{func_name}()")
+        print(f"  Description: {func_info['description']}")
+        print(f"  Parameters:")
+        for param in func_info['parameters']:
+            print(f"    - {param}")
+        print(f"  Returns: {func_info['returns']}")
+    
+    print("\n" + "=" * 80)
+    print("FILTERING CAPABILITIES")
+    print("-" * 80)
+    print(f"\nDescription: {caps['filtering']['description']}")
+    print(f"\nSupported Operators:")
+    for op in caps['filtering']['operators']:
+        print(f"  - {op}")
+    print(f"\nSupported Custom Field Types:")
+    for field_type in caps['filtering']['custom_field_types']:
+        print(f"  - {field_type}")
+    print(f"\nFilter Logic:")
+    for logic in caps['filtering']['filter_logic']:
+        print(f"  - {logic}")
+    
+    print("\n" + "=" * 80)
+    print("EXCEPTIONS")
+    print("-" * 80)
+    for exc_name, exc_desc in caps['exceptions'].items():
+        print(f"  {exc_name}: {exc_desc}")
+    
+    print("\n" + "=" * 80)
+    print("ENVIRONMENT VARIABLES")
+    print("-" * 80)
+    for var_name, var_desc in caps['environment_variables'].items():
+        print(f"  {var_name}: {var_desc}")
+    
+    print("\n" + "=" * 80)
