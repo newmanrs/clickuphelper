@@ -543,6 +543,58 @@ class Workspace:
         print(json.dumps(self.data, indent=2))
 
 
+class Teams:
+    def __init__(self):
+        """
+        Retrieve all teams/workspaces accessible to the API key.
+        Stores team data in self.teams list.
+        """
+        url = "https://api.clickup.com/api/v2/team"
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        
+        self.teams = data["teams"]
+        self.team_names = [team["name"] for team in self.teams]
+        self.team_ids = [team["id"] for team in self.teams]
+        self.team_lookup = {k: v for (k, v) in zip(self.team_names, self.team_ids)}
+    
+    def get_team_ids(self):
+        """Return list of team IDs"""
+        return self.team_ids
+    
+    def get_team_names(self):
+        """Return list of team names"""
+        return self.team_names
+    
+    def get_team_by_id(self, team_id):
+        """Return team metadata by ID"""
+        for team in self.teams:
+            if team["id"] == team_id:
+                return team
+        raise KeyError(f"Team ID '{team_id}' not found. Available team IDs are {self.team_ids}")
+    
+    def get_team_by_name(self, team_name):
+        """Return team metadata by name"""
+        try:
+            team_id = self.team_lookup[team_name]
+            return self.get_team_by_id(team_id)
+        except KeyError as e:
+            msg = f"Team name '{team_name}' not found. Available team names are {self.team_names}"
+            raise KeyError(msg) from e
+    
+    def __getitem__(self, name):
+        """Allow indexing by team name to get team ID"""
+        try:
+            return self.team_lookup[name]
+        except KeyError as e:
+            msg = f"Team name '{name}' not found. Available team names are {self.team_names}"
+            raise KeyError(msg) from e
+    
+    def __iter__(self):
+        """Allow iteration over teams"""
+        return iter(self.teams)
+
+
 class Spaces:
     def __init__(self):
         """

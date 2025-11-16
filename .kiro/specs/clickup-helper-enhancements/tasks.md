@@ -2,7 +2,7 @@
 
 ## Core Infrastructure
 
-- [ ] 1. Implement Teams class for workspace discovery
+- [x] 1. Implement Teams class for workspace discovery
   - Create Teams class with initialization that calls ClickUp API endpoint GET /team
   - Implement get_team_ids() method to return list of team IDs
   - Implement get_team_names() method to return list of team names
