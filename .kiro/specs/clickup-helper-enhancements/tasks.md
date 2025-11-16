@@ -67,12 +67,12 @@
 
 ## Subtask Support
 
-- [ ] 8. Enhance Tasks class for subtask retrieval
-  - [ ] 8.1 Add include_subtasks parameter to Tasks.__init__()
+- [x] 8. Enhance Tasks class for subtask retrieval
+  - [x] 8.1 Add include_subtasks parameter to Tasks.__init__()
     - Store include_subtasks as instance variable
     - Pass include_subtasks to Task object creation when iterating tasks
     - _Requirements: 13.1, 13.2, 13.3_
-  - [ ] 8.2 Implement get_tasks_with_subtasks method
+  - [x] 8.2 Implement get_tasks_with_subtasks method
     - Add get_tasks_with_subtasks() method to Tasks class
     - Accept optional filters, tag_filter, and status_filter parameters
     - Apply filters to parent tasks only
@@ -81,7 +81,7 @@
     - Include all subtasks regardless of whether they match parent filters
     - _Requirements: 14.1, 14.2, 14.3_
 
-- [ ] 9. Implement subtask filtering in Task class
+- [x] 9. Implement subtask filtering in Task class
   - Add get_filtered_subtasks() method to Task class
   - Accept list of CustomFieldFilter objects
   - Verify task was initialized with include_subtasks=True, raise ValueError if not

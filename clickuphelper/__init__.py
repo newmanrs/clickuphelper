@@ -453,6 +453,162 @@ class Task:  # Technically Clickup Task View
         # Use the add_attachment function with the parent_field_id
         return self.add_attachment(file_path, parent_field_id=custom_field_id)
 
+    def get_filtered_subtasks(self, filters):
+        """
+        Get subtasks matching custom field filters.
+        
+        Args:
+            filters: List of CustomFieldFilter objects
+        
+        Returns:
+            List of subtask dictionaries matching all filters
+        
+        Raises:
+            ValueError: If task was not initialized with include_subtasks=True
+        """
+        # Verify task was initialized with include_subtasks=True
+        if not self.include_subtasks:
+            raise ValueError(
+                f"Task {self.id} was not initialized with include_subtasks=True. "
+                "Please reinitialize the task with include_subtasks=True to filter subtasks."
+            )
+        
+        # Check if task has subtasks
+        if 'subtasks' not in self.task or not self.task['subtasks']:
+            return []
+        
+        matching_subtasks = []
+        
+        # For each subtask, create Task object and evaluate filters
+        for subtask_data in self.task['subtasks']:
+            # Create Task object from subtask data
+            subtask = Task(subtask_data, raw_task=subtask_data)
+            
+            # Evaluate all filters - all must match (AND logic)
+            all_filters_match = True
+            for filter_obj in filters:
+                if not self._evaluate_subtask_filter(subtask, filter_obj):
+                    all_filters_match = False
+                    break
+            
+            # If all filters match, include this subtask
+            if all_filters_match:
+                matching_subtasks.append(subtask_data)
+        
+        return matching_subtasks
+    
+    def _evaluate_subtask_filter(self, subtask, filter_obj):
+        """
+        Evaluate a single filter against a subtask.
+        
+        Args:
+            subtask: Task object representing the subtask
+            filter_obj: CustomFieldFilter object
+        
+        Returns:
+            Boolean indicating if the filter matches
+        """
+        field_name = filter_obj.field_name
+        operator_type = filter_obj.operator
+        filter_value = filter_obj.value
+        
+        # Handle IS_SET and IS_NOT_SET operators
+        if operator_type == FilterOperator.IS_SET:
+            try:
+                subtask.get_field(field_name)
+                return True
+            except (MissingCustomFieldValue, MissingCustomField):
+                return False
+        
+        if operator_type == FilterOperator.IS_NOT_SET:
+            try:
+                subtask.get_field(field_name)
+                return False
+            except (MissingCustomFieldValue, MissingCustomField):
+                return True
+        
+        # For all other operators, get the field value
+        try:
+            task_value = subtask.get_field(field_name)
+        except MissingCustomFieldValue:
+            # If field is missing and we're not checking IS_SET/IS_NOT_SET, filter doesn't match
+            return False
+        except MissingCustomField:
+            # If field doesn't exist in the subtask schema, filter doesn't match
+            return False
+        
+        # Apply operator-specific comparison logic
+        if operator_type == FilterOperator.EQUALS:
+            return task_value == filter_value
+        
+        elif operator_type == FilterOperator.NOT_EQUALS:
+            return task_value != filter_value
+        
+        elif operator_type == FilterOperator.GREATER_THAN:
+            try:
+                return task_value > filter_value
+            except TypeError:
+                return False
+        
+        elif operator_type == FilterOperator.GREATER_THAN_OR_EQUAL:
+            try:
+                return task_value >= filter_value
+            except TypeError:
+                return False
+        
+        elif operator_type == FilterOperator.LESS_THAN:
+            try:
+                return task_value < filter_value
+            except TypeError:
+                return False
+        
+        elif operator_type == FilterOperator.LESS_THAN_OR_EQUAL:
+            try:
+                return task_value <= filter_value
+            except TypeError:
+                return False
+        
+        elif operator_type == FilterOperator.CONTAINS:
+            # For text fields, check if filter_value is substring
+            if isinstance(task_value, str):
+                return filter_value.lower() in task_value.lower()
+            return False
+        
+        elif operator_type == FilterOperator.STARTS_WITH:
+            # For text fields, check if starts with filter_value
+            if isinstance(task_value, str):
+                return task_value.lower().startswith(filter_value.lower())
+            return False
+        
+        elif operator_type == FilterOperator.REGEX:
+            # For text fields, match against regex pattern
+            if isinstance(task_value, str):
+                try:
+                    return re.search(filter_value, task_value) is not None
+                except re.error:
+                    return False
+            return False
+        
+        elif operator_type == FilterOperator.IN:
+            # Check if task_value is in the list of filter_values
+            # For multiselect fields (labels), check if any task value is in filter values
+            if isinstance(task_value, list):
+                # task_value is a list (e.g., labels field)
+                # Check if any of the task's values are in the filter values
+                if isinstance(filter_value, list):
+                    return any(tv in filter_value for tv in task_value)
+                else:
+                    return filter_value in task_value
+            else:
+                # task_value is a single value
+                if isinstance(filter_value, list):
+                    return task_value in filter_value
+                else:
+                    return task_value == filter_value
+        
+        # Unknown operator
+        return False
+
 
 def post_task(list_id, task_name, task_description="", status="Open", custom_fields={}, debug=False):
 
@@ -780,7 +936,7 @@ class FolderLists:
 
 
 class Tasks:
-    def __init__(self, list_id, include_closed=False):
+    def __init__(self, list_id, include_closed=False, include_subtasks=False):
 
         # https://clickup.com/api/clickupreference/operation/GetTasks/
         # This takes a lot more params/filters than implemented here
@@ -789,6 +945,9 @@ class Tasks:
         query = {"archived": "false", "page": 0}
         if include_closed:
             query["include_closed"] = "true"
+
+        # Store include_subtasks as instance variable
+        self.include_subtasks = include_subtasks
 
         self.tasks = {}
         self.task_names = []
@@ -805,7 +964,8 @@ class Tasks:
 
             # print(json.dumps(data["tasks"],indent=2))
             for task in data["tasks"]:
-                self.tasks[task["id"]] = Task(task)
+                # Pass include_subtasks to Task object creation
+                self.tasks[task["id"]] = Task(task, include_subtasks=self.include_subtasks)
 
             self.task_names += [i["name"] for i in data["tasks"]]
             self.task_ids += [i["id"] for i in data["tasks"]]
@@ -1111,6 +1271,72 @@ class Tasks:
             Number of tasks
         """
         return len(self.task_ids)
+
+    def get_tasks_with_subtasks(self, filters=None, tag_filter=None, status_filter=None):
+        """
+        Get tasks (optionally filtered) with all their subtasks.
+        
+        Args:
+            filters: Optional list of CustomFieldFilter objects for parent tasks
+            tag_filter: Optional tag name (string) or list of tag names for parent tasks
+            status_filter: Optional list of status names for parent tasks
+        
+        Returns:
+            Dictionary of task_id -> dict with structure:
+            {
+                'task': Task object,
+                'subtasks': List of Task objects
+            }
+        """
+        # Start with all tasks
+        parent_tasks = {task_id: self[task_id] for task_id in self.task_ids}
+        
+        # Apply filters to parent tasks only
+        if tag_filter is not None:
+            parent_tasks = self.filter_by_tag(tag_filter)
+        
+        if status_filter is not None:
+            # Apply status filter to the current set of parent tasks
+            filtered = {}
+            for task_id, task in parent_tasks.items():
+                task_status = task.task.get('status', {}).get('status', '')
+                if task_status in status_filter:
+                    filtered[task_id] = task
+            parent_tasks = filtered
+        
+        if filters is not None:
+            # Apply custom field filters to the current set of parent tasks
+            filtered = {}
+            for task_id, task in parent_tasks.items():
+                all_filters_match = True
+                for filter_obj in filters:
+                    if not self._evaluate_filter(task, filter_obj):
+                        all_filters_match = False
+                        break
+                if all_filters_match:
+                    filtered[task_id] = task
+            parent_tasks = filtered
+        
+        # For each matching parent task, retrieve with subtasks
+        result = {}
+        for task_id in parent_tasks.keys():
+            # Retrieve the task with subtasks included
+            task_with_subtasks = Task(task_id, include_subtasks=True)
+            
+            # Extract subtasks and create Task objects for them
+            subtasks = []
+            if 'subtasks' in task_with_subtasks.task:
+                for subtask_data in task_with_subtasks.task['subtasks']:
+                    # Create Task object from subtask data
+                    subtask = Task(subtask_data, raw_task=subtask_data)
+                    subtasks.append(subtask)
+            
+            result[task_id] = {
+                'task': task_with_subtasks,
+                'subtasks': subtasks
+            }
+        
+        return result
 
 
 def get_space_id(space_name):
