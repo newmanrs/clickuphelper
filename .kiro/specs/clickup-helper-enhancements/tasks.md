@@ -28,7 +28,7 @@
 
 ## Task Filtering Enhancements
 
-- [ ] 4. Add tag filtering to Tasks class
+- [x] 4. Add tag filtering to Tasks class
   - Implement filter_by_tag() method in Tasks class
   - Support both single tag name (string) and multiple tag names (list)
   - Apply OR logic when multiple tags are provided

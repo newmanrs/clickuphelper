@@ -856,6 +856,57 @@ class Tasks:
                 ret[task_id] = task_fields
         return ret
 
+    def filter_by_tag(self, tag_names, include_subtasks=False):
+        """
+        Filter tasks by tag name(s).
+        
+        Args:
+            tag_names: Single tag name (string) or list of tag names (OR logic)
+            include_subtasks: If True, also check subtasks for matching tags (default: False)
+                             Note: This will only fetch full task data for parent tasks that match,
+                             to avoid rate limits and improve performance
+        
+        Returns:
+            Dictionary of task_id -> Task object for matching tasks
+        """
+        # Convert single string to list for consistent handling
+        if isinstance(tag_names, str):
+            tag_names = [tag_names]
+        
+        ret = {}
+        for task_id in self:
+            task = self[task_id]
+            
+            # Get the tags from the task's raw data
+            task_tags = task.task.get('tags', [])
+            
+            # Extract tag names from the task's tags list
+            task_tag_names = [tag['name'] for tag in task_tags]
+            
+            # Check if any of the specified tag names match (OR logic)
+            parent_matches = any(tag_name in task_tag_names for tag_name in tag_names)
+            
+            if parent_matches:
+                # If we need subtasks and parent matches, fetch full task data
+                if include_subtasks:
+                    task = Task(task_id, include_subtasks=True)
+                ret[task_id] = task
+            
+            # Check subtasks if requested (only if parent matched, to get subtask data)
+            if include_subtasks and parent_matches and 'subtasks' in task.task:
+                for subtask in task.task['subtasks']:
+                    subtask_id = subtask['id']
+                    subtask_tags = subtask.get('tags', [])
+                    subtask_tag_names = [tag['name'] for tag in subtask_tags]
+                    
+                    # Check if subtask matches any of the specified tags
+                    if any(tag_name in subtask_tag_names for tag_name in tag_names):
+                        # Create a Task object for the subtask
+                        # Note: subtasks in the list don't have full data, so we create from dict
+                        ret[subtask_id] = Task(subtask, raw_task=subtask)
+        
+        return ret
+
 
 def get_space_id(space_name):
     raise NotImplementedError
