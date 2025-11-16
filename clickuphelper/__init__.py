@@ -3,6 +3,8 @@ import json
 import datetime
 import os
 import operator
+import re
+from enum import Enum
 
 if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is None:
     cu_key = os.environ["CLICKUP_API_KEY"]
@@ -11,6 +13,38 @@ if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is None:
 else:
     team_id = None  # AWS Lambda Functions must set modules' team_id
     headers = None  # AWS Lambda Functions must set modules' header
+
+
+class FilterOperator(Enum):
+    """Comparison operators for custom field filtering"""
+    EQUALS = "eq"
+    NOT_EQUALS = "ne"
+    GREATER_THAN = "gt"
+    GREATER_THAN_OR_EQUAL = "gte"
+    LESS_THAN = "lt"
+    LESS_THAN_OR_EQUAL = "lte"
+    CONTAINS = "contains"
+    STARTS_WITH = "starts_with"
+    REGEX = "regex"
+    IN = "in"
+    IS_SET = "is_set"
+    IS_NOT_SET = "is_not_set"
+
+
+class CustomFieldFilter:
+    """Represents a single custom field filter"""
+    def __init__(self, field_name, operator, value=None):
+        """
+        Initialize a custom field filter.
+        
+        Args:
+            field_name: Name of the custom field to filter on
+            operator: FilterOperator enum value specifying the comparison type
+            value: Value to compare against (not needed for IS_SET/IS_NOT_SET)
+        """
+        self.field_name = field_name
+        self.operator = operator
+        self.value = value
 
 
 def ts_ms_to_dt(ts, except_if_year_1970=True):
@@ -930,6 +964,154 @@ class Tasks:
         
         return ret
 
+    def filter_by_custom_fields(self, filters):
+        """
+        Apply complex custom field filters with AND logic.
+        
+        Args:
+            filters: List of CustomFieldFilter objects
+        
+        Returns:
+            Dictionary of task_id -> Task object for matching tasks
+        """
+        ret = {}
+        
+        for task_id in self:
+            task = self[task_id]
+            all_filters_match = True
+            
+            # Evaluate each filter - all must match (AND logic)
+            for filter_obj in filters:
+                if not self._evaluate_filter(task, filter_obj):
+                    all_filters_match = False
+                    break
+            
+            if all_filters_match:
+                ret[task_id] = task
+        
+        return ret
+    
+    def _evaluate_filter(self, task, filter_obj):
+        """
+        Evaluate a single filter against a task.
+        
+        Args:
+            task: Task object to evaluate
+            filter_obj: CustomFieldFilter object
+        
+        Returns:
+            Boolean indicating if the filter matches
+        """
+        field_name = filter_obj.field_name
+        operator_type = filter_obj.operator
+        filter_value = filter_obj.value
+        
+        # Handle IS_SET and IS_NOT_SET operators
+        if operator_type == FilterOperator.IS_SET:
+            try:
+                task.get_field(field_name)
+                return True
+            except MissingCustomFieldValue:
+                return False
+        
+        if operator_type == FilterOperator.IS_NOT_SET:
+            try:
+                task.get_field(field_name)
+                return False
+            except MissingCustomFieldValue:
+                return True
+        
+        # For all other operators, get the field value
+        try:
+            task_value = task.get_field(field_name)
+        except MissingCustomFieldValue:
+            # If field is missing and we're not checking IS_SET/IS_NOT_SET, filter doesn't match
+            return False
+        except MissingCustomField:
+            # If field doesn't exist in the task schema, filter doesn't match
+            return False
+        
+        # Apply operator-specific comparison logic
+        if operator_type == FilterOperator.EQUALS:
+            return task_value == filter_value
+        
+        elif operator_type == FilterOperator.NOT_EQUALS:
+            return task_value != filter_value
+        
+        elif operator_type == FilterOperator.GREATER_THAN:
+            try:
+                return task_value > filter_value
+            except TypeError:
+                return False
+        
+        elif operator_type == FilterOperator.GREATER_THAN_OR_EQUAL:
+            try:
+                return task_value >= filter_value
+            except TypeError:
+                return False
+        
+        elif operator_type == FilterOperator.LESS_THAN:
+            try:
+                return task_value < filter_value
+            except TypeError:
+                return False
+        
+        elif operator_type == FilterOperator.LESS_THAN_OR_EQUAL:
+            try:
+                return task_value <= filter_value
+            except TypeError:
+                return False
+        
+        elif operator_type == FilterOperator.CONTAINS:
+            # For text fields, check if filter_value is substring
+            if isinstance(task_value, str):
+                return filter_value.lower() in task_value.lower()
+            return False
+        
+        elif operator_type == FilterOperator.STARTS_WITH:
+            # For text fields, check if starts with filter_value
+            if isinstance(task_value, str):
+                return task_value.lower().startswith(filter_value.lower())
+            return False
+        
+        elif operator_type == FilterOperator.REGEX:
+            # For text fields, match against regex pattern
+            if isinstance(task_value, str):
+                try:
+                    return re.search(filter_value, task_value) is not None
+                except re.error:
+                    return False
+            return False
+        
+        elif operator_type == FilterOperator.IN:
+            # Check if task_value is in the list of filter_values
+            # For multiselect fields (labels), check if any task value is in filter values
+            if isinstance(task_value, list):
+                # task_value is a list (e.g., labels field)
+                # Check if any of the task's values are in the filter values
+                if isinstance(filter_value, list):
+                    return any(tv in filter_value for tv in task_value)
+                else:
+                    return filter_value in task_value
+            else:
+                # task_value is a single value
+                if isinstance(filter_value, list):
+                    return task_value in filter_value
+                else:
+                    return task_value == filter_value
+        
+        # Unknown operator
+        return False
+
+    def get_count(self):
+        """
+        Get count of tasks in the list.
+        
+        Returns:
+            Number of tasks
+        """
+        return len(self.task_ids)
+
 
 def get_space_id(space_name):
     raise NotImplementedError
@@ -1106,6 +1288,21 @@ def get_list_task_ids(space_name, folder_name, list_name, include_closed=True):
     """
     tasks = get_list_tasks(space_name, folder_name, list_name, include_closed)
     return tasks.task_ids
+
+
+def get_task_count(list_id, include_closed=False):
+    """
+    Get count of tasks in a list.
+    
+    Args:
+        list_id: The list ID
+        include_closed: Whether to include closed tasks (default False)
+    
+    Returns:
+        Number of tasks in the list
+    """
+    tasks = Tasks(list_id, include_closed=include_closed)
+    return tasks.get_count()
 
 
 def get_list(space_name, folder_name, list_name):

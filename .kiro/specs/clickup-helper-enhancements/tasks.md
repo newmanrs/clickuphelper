@@ -44,12 +44,12 @@
   - Return dictionary of task_id -> Task object for matching tasks
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 6. Implement advanced custom field filtering infrastructure
-  - [ ] 6.1 Create FilterOperator enum and CustomFieldFilter class
+- [x] 6. Implement advanced custom field filtering infrastructure
+  - [x] 6.1 Create FilterOperator enum and CustomFieldFilter class
     - Define FilterOperator enum with all comparison operators (EQUALS, NOT_EQUALS, GREATER_THAN, LESS_THAN, GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL, CONTAINS, STARTS_WITH, REGEX, IN, IS_SET, IS_NOT_SET)
     - Create CustomFieldFilter class with field_name, operator, and value attributes
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 8.1, 8.2, 8.3, 9.1, 9.2, 9.3_
-  - [ ] 6.2 Implement filter_by_custom_fields method
+  - [x] 6.2 Implement filter_by_custom_fields method
     - Add filter_by_custom_fields() method to Tasks class
     - Accept list of CustomFieldFilter objects
     - Implement AND logic across all filters
@@ -59,7 +59,7 @@
     - Return dictionary of task_id -> Task object for matching tasks
     - _Requirements: 10.1, 10.2, 10.3_
 
-- [ ] 7. Add task count functionality
+- [x] 7. Add task count functionality
   - Implement get_count() method in Tasks class that returns len(self.task_ids)
   - Create get_task_count() helper function that instantiates Tasks and returns count
   - Support include_closed parameter
