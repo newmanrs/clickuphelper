@@ -36,7 +36,7 @@
   - Return dictionary of task_id -> Task object for matching tasks
   - _Requirements: 5.1, 5.2, 5.3, 15.1, 15.2, 15.3_
 
-- [ ] 5. Add status filtering to Tasks class
+- [x] 5. Add status filtering to Tasks class
   - Implement filter_by_statuses() method in Tasks class
   - Accept list of status names as parameter
   - Apply OR logic to match tasks with any of the provided statuses

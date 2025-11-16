@@ -907,6 +907,29 @@ class Tasks:
         
         return ret
 
+    def filter_by_statuses(self, status_names):
+        """
+        Filter tasks by multiple status values (OR logic).
+        
+        Args:
+            status_names: List of status names to match
+        
+        Returns:
+            Dictionary of task_id -> Task object for matching tasks
+        """
+        ret = {}
+        for task_id in self:
+            task = self[task_id]
+            
+            # Get the status from the task's raw data
+            task_status = task.task.get('status', {}).get('status', '')
+            
+            # Check if the task status matches any of the provided statuses (OR logic)
+            if task_status in status_names:
+                ret[task_id] = task
+        
+        return ret
+
 
 def get_space_id(space_name):
     raise NotImplementedError
