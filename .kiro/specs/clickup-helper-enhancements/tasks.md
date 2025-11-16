@@ -102,3 +102,25 @@
   - Document filtering capabilities and supported custom field types
   - Format output to be easily parseable by LLMs
   - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.5_
+
+- [ ] 11. Create comprehensive documentation for all new features
+  - Create or update DOCS.md with complete documentation for tasks 1-10
+  - Include overview section explaining the purpose of each feature
+  - Provide straightforward code examples for each feature:
+    - Teams class usage (workspace discovery)
+    - get_all_lists() function usage
+    - Tag management (get_space_tags, create_space_tag)
+    - Task filtering by tags (filter_by_tag)
+    - Task filtering by status (filter_by_statuses)
+    - Advanced custom field filtering (FilterOperator, CustomFieldFilter, filter_by_custom_fields)
+    - Task count retrieval (get_count, get_task_count)
+    - Subtask retrieval (include_subtasks, get_tasks_with_subtasks)
+    - Subtask filtering (get_filtered_subtasks)
+    - Module capabilities (get_capabilities, print_capabilities)
+  - Include practical use cases for each feature
+  - Show how to combine multiple filtering methods
+  - Document all FilterOperator types with examples
+  - Document supported custom field types
+  - Include error handling examples
+  - Add setup/configuration section
+  - _Requirements: All requirements 1-16_
