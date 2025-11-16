@@ -865,6 +865,132 @@ def get_folder_id(space_name, folder_name):
     raise NotImplementedError
 
 
+def get_all_lists(team_id_param, archived=False):
+    """
+    Get all lists in a workspace regardless of space/folder location.
+    
+    Args:
+        team_id_param: The workspace/team ID
+        archived: Whether to include archived lists (default False)
+    
+    Returns:
+        List of dictionaries with structure:
+        {
+            'id': str,
+            'name': str,
+            'space_id': str,
+            'space_name': str,
+            'folder_id': str or None,
+            'folder_name': str or None
+        }
+    """
+    # Temporarily set the global team_id for API calls
+    global team_id
+    original_team_id = team_id
+    team_id = team_id_param
+    
+    try:
+        all_lists = []
+        
+        # Get all spaces in the workspace
+        spaces = Spaces()
+        
+        for space in spaces:
+            space_id = space['id']
+            space_name = space['name']
+            
+            # Get lists directly in the space
+            space_lists = SpaceLists(space_id)
+            for list_item in space_lists:
+                # Filter by archived status
+                if not archived and list_item.get('archived', False):
+                    continue
+                    
+                all_lists.append({
+                    'id': list_item['id'],
+                    'name': list_item['name'],
+                    'space_id': space_id,
+                    'space_name': space_name,
+                    'folder_id': None,
+                    'folder_name': None
+                })
+            
+            # Get all folders in the space
+            folders = Folders(space_id)
+            for folder in folders:
+                folder_id = folder['id']
+                folder_name = folder['name']
+                
+                # Get lists in the folder
+                folder_lists = FolderLists(folder_id)
+                for list_item in folder_lists:
+                    # Filter by archived status
+                    if not archived and list_item.get('archived', False):
+                        continue
+                        
+                    all_lists.append({
+                        'id': list_item['id'],
+                        'name': list_item['name'],
+                        'space_id': space_id,
+                        'space_name': space_name,
+                        'folder_id': folder_id,
+                        'folder_name': folder_name
+                    })
+        
+        return all_lists
+    
+    finally:
+        # Restore the original team_id
+        team_id = original_team_id
+
+
+def get_space_tags(space_id):
+    """
+    Get all tags in a space.
+    
+    Args:
+        space_id: The space ID
+    
+    Returns:
+        List of tag dictionaries with 'name' and 'tag' (ID) keys
+    """
+    url = f"https://api.clickup.com/api/v2/space/{space_id}/tag"
+    response = requests.get(url, headers=headers)
+    data = response.json()
+    
+    # Handle empty tag lists gracefully
+    return data.get("tags", [])
+
+
+def create_space_tag(space_id, tag_name, tag_fg_color=None, tag_bg_color=None):
+    """
+    Create a new tag in a space.
+    
+    Args:
+        space_id: The space ID
+        tag_name: Name for the new tag
+        tag_fg_color: Foreground color hex code (optional)
+        tag_bg_color: Background color hex code (optional)
+    
+    Returns:
+        Created tag dictionary from API response
+    """
+    url = f"https://api.clickup.com/api/v2/space/{space_id}/tag"
+    
+    payload = {"tag": {"name": tag_name}}
+    
+    # Add optional color parameters if provided
+    if tag_fg_color is not None:
+        payload["tag"]["tag_fg"] = tag_fg_color
+    if tag_bg_color is not None:
+        payload["tag"]["tag_bg"] = tag_bg_color
+    
+    response = requests.post(url, json=payload, headers=headers)
+    
+    # Return the response data (will include error if tag already exists)
+    return response.json()
+
+
 def get_list_id(space_name, folder_name, list_name):
     """
     Return clickup ID of list.  Folder name is optional if set

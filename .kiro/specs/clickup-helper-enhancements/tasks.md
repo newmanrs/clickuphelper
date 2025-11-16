@@ -10,7 +10,7 @@
   - Implement __getitem__ and __iter__ magic methods for convenient access
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 2. Implement unified list retrieval function
+- [x] 2. Implement unified list retrieval function
   - Create get_all_lists() function that accepts team_id parameter
   - Use existing Spaces, Folders, SpaceLists, and FolderLists classes to traverse hierarchy
   - Aggregate lists from both space-level and folder-level locations
@@ -18,7 +18,7 @@
   - Handle archived parameter to include/exclude archived lists
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 3. Implement tag management functions
+- [x] 3. Implement tag management functions
   - Create get_space_tags() function that calls GET /space/{space_id}/tag
   - Create create_space_tag() function that calls POST /space/{space_id}/tag
   - Handle optional color parameters for tag creation
