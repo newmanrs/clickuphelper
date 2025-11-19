@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clickuphelper"
-version = "0.3.9"
+version = "0.5.0"
 description = "Python classes, cli, and tooling to interact with Clickup"
 readme = "README.md"
 authors = [{ name = "Robert Newman", email = "newmanrs@example.com" }]
